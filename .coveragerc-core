@@ -1,0 +1,32 @@
+# Coverage gate of the torch-free core (CI job "test-core", see CONTRIBUTING.md).
+#
+#   pytest --cov=aml_graphminer --cov-config=.coveragerc-core
+#
+# The modules listed under `omit` cannot run without PyTorch / PyTorch Geometric / FastAPI; they
+# are measured by the full installation (CI job "test-gnn", 85 % gate in pyproject.toml).
+[run]
+source = aml_graphminer
+branch = false
+omit =
+    */aml_graphminer/detectors/gnn/checkpoint.py
+    */aml_graphminer/detectors/gnn/data.py
+    */aml_graphminer/detectors/gnn/detector.py
+    */aml_graphminer/detectors/gnn/experiment.py
+    */aml_graphminer/detectors/gnn/inference.py
+    */aml_graphminer/detectors/gnn/lightning_trainer.py
+    */aml_graphminer/detectors/gnn/losses.py
+    */aml_graphminer/detectors/gnn/models.py
+    */aml_graphminer/detectors/gnn/node_classifier.py
+    */aml_graphminer/detectors/gnn/trainer.py
+    */aml_graphminer/detectors/gnn/unsupervised.py
+    */aml_graphminer/explainers/gnn_explainers.py
+    */aml_graphminer/api/app.py
+
+[report]
+fail_under = 90
+show_missing = true
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:

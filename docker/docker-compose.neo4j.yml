@@ -1,0 +1,20 @@
+# Neo4j database to explore the transaction graph in Cypher:
+#   NEO4J_PASSWORD=change-me docker compose -f docker/docker-compose.neo4j.yml up -d
+#   amlgm export-neo4j data/HI-Small_Trans.csv neo4j-import            # writes CSV + Cypher scripts
+#   docker compose -f docker/docker-compose.neo4j.yml exec neo4j \
+#       cypher-shell -u neo4j -p change-me -f /import/import.cypher
+# Browser: http://127.0.0.1:7474  (or load directly: amlgm export-neo4j ... --push --password change-me)
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-aml-graphminer}
+      NEO4J_server_memory_heap_max__size: 2G
+    ports:
+      - "127.0.0.1:7474:7474"   # browser
+      - "127.0.0.1:7687:7687"   # bolt
+    volumes:
+      - ${NEO4J_IMPORT:-../neo4j-import}:/import:ro
+      - neo4j-data:/data
+volumes:
+  neo4j-data:

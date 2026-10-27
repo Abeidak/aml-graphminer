@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "AML-GraphMiner: an open-source toolkit for explainable money-laundering detection on transaction graphs"
+version: 0.1.0
+date-released: 2026-10-07  # TODO: set the real release date
+license: MIT
+repository-code: "https://github.com/OWNER/aml-graphminer"
+abstract: >-
+  AML-GraphMiner is a modular Python toolkit that ingests financial transactions,
+  builds transaction graphs, detects classical laundering motifs (fan-in, fan-out,
+  cycles, scatter-gather, gather-scatter, smurfing) and risk communities, trains
+  supervised Graph Neural Networks (GCN, GraphSAGE, GAT) and an unsupervised graph
+  auto-encoder, and produces auditable explanations for every alert through a Python
+  SDK, a web investigation interface, a command line and a REST API.
+keywords:
+  - anti-money laundering
+  - graph neural networks
+  - explainable AI
+  - financial crime
+authors:
+  # TODO: replace with the student's real name and ORCID before publishing.
+  - family-names: "TODO_STUDENT_FAMILY_NAME"
+    given-names: "TODO_STUDENT_GIVEN_NAME"
+    affiliation: "Faculté des Sciences et Techniques, Université de Nouakchott"
+  - family-names: "Cheikh Tourad"
+    given-names: "Mohamedou El Ghotob"
+    affiliation: "Unité de Recherche Al-Khawarizmi, Université de Nouakchott"
+    # TODO: add the supervisor's ORCID (https://orcid.org/...) after checking it with them.

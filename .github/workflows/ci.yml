@@ -1,0 +1,196 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONWARNINGS: "ignore::DeprecationWarning"
+
+jobs:
+  lint:
+    name: Lint and types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev,viz]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy src
+
+  test-core:
+    name: Core tests (Python ${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # Linux is the reference platform; Windows / macOS report but do not block until they have been green once
+    continue-on-error: ${{ matrix.os != 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -e ".[dev,viz]"
+      # No PyTorch / FastAPI here: the torch-free core must reach 90 % (see .coveragerc-core)
+      - name: Tests with coverage gate
+        run: pytest --cov=aml_graphminer --cov-config=.coveragerc-core --cov-report=term-missing --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        with:
+          name: coverage-core
+          path: coverage.xml
+
+  test-extras:
+    name: Optional extras without PyTorch (API + web UI, Parquet, Polars, XGBoost, MLflow, Neo4j)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev,viz,api,parquet,scale,xgboost,tracking,hub,neo4j,data]"
+      - run: >-
+          pytest -ra tests/test_api_app.py tests/test_investigation.py tests/test_readers.py
+          tests/test_baselines_and_tracking.py tests/test_cli.py tests/test_neo4j_and_datasets.py
+          tests/test_eda.py
+      - name: Web interface scripts are valid JavaScript
+        run: node --check src/aml_graphminer/api/static/app.js
+
+  test-gnn:
+    name: GNN tests (CPU PyTorch + PyG)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install PyTorch (CPU), PyG, pyg-lib, Lightning and Captum
+        run: |
+          # the versions the toolkit was validated with (torch 2.10 / PyG 2.8 / Lightning 2.6)
+          pip install "torch==2.10.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install torch_geometric lightning
+          # PyG publishes its compiled wheels per torch major.minor (x.y.0)
+          TORCH=$(python -c "import torch; v=torch.__version__.split('+')[0].split('.'); print('.'.join(v[:2]) + '.0')")
+          pip install pyg-lib -f "https://data.pyg.org/whl/torch-${TORCH}+cpu.html"
+          pip install -e ".[dev,viz,api,explain]"
+      - name: Show versions
+        run: python -c "import torch, torch_geometric as g; print(torch.__version__, g.__version__)"
+      - name: Full test-suite with the project-wide coverage gate
+        run: pytest --cov=aml_graphminer --cov-report=term-missing --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-full
+          path: coverage.xml
+
+  notebooks:
+    name: Execute notebooks 01-03
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[viz]" jupyter nbconvert nbclient ipykernel
+      - name: Execute (outputs are discarded; the committed ones come from scripts/py2nb.py)
+        run: |
+          for nb in notebooks/01_quickstart notebooks/02_ibm_aml_benchmark notebooks/03_explainability; do
+            jupyter nbconvert --to notebook --execute "$nb.ipynb" --output-dir "$RUNNER_TEMP/nb" --ExecutePreprocessor.timeout=900
+          done
+      - name: Notebooks are in sync with their sources
+        run: |
+          python scripts/py2nb.py notebooks/src/*.py --out "$RUNNER_TEMP/rebuilt"
+          python - <<'PY'
+          import json, os, pathlib
+          rebuilt = pathlib.Path(os.environ["RUNNER_TEMP"]) / "rebuilt"
+          for path in sorted(rebuilt.glob("*.ipynb")):
+              fresh = [(c["cell_type"], "".join(c["source"])) for c in json.loads(path.read_text())["cells"]]
+              kept = [(c["cell_type"], "".join(c["source"])) for c in json.loads(pathlib.Path("notebooks", path.name).read_text())["cells"]]
+              assert fresh == kept, f"{path.name} is out of date: run python scripts/py2nb.py notebooks/src/*.py"
+          print("notebook sources and notebooks agree")
+          PY
+
+  docs:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[docs]"
+      - run: sphinx-build -b html -n --keep-going docs docs/_build/html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: docs/_build/html
+
+  package:
+    name: Build wheel and sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - name: Smoke-test the wheel in a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install dist/*.whl
+          "$RUNNER_TEMP/venv/bin/amlgm" --version
+          "$RUNNER_TEMP/venv/bin/amlgm" generate "$RUNNER_TEMP/demo" --accounts 300 --background 2000
+          "$RUNNER_TEMP/venv/bin/amlgm" scan "$RUNNER_TEMP/demo/Synth-Small_Trans.csv" --top 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/Dockerfile -t aml-graphminer:ci .
+      - run: docker run --rm aml-graphminer:ci amlgm --version
+      - name: The default command serves the web interface
+        run: |
+          docker run -d --name amlgm-demo -p 127.0.0.1:8000:8000 aml-graphminer:ci
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:8000/health && break; sleep 2; done
+          curl -fs http://127.0.0.1:8000/ui/ | grep -q "AML-GraphMiner"
+          curl -fs http://127.0.0.1:8000/api/datasets | grep -q "synthetic demo"
+          docker rm -f amlgm-demo
+      - name: Compose files are valid
+        run: |
+          MODEL_DIR=/tmp docker compose -f docker/docker-compose.yml config --quiet
+          docker compose -f docker/docker-compose.demo.yml config --quiet
+          docker compose -f docker/docker-compose.neo4j.yml config --quiet

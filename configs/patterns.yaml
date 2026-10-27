@@ -1,0 +1,79 @@
+# Structural-motif and risk-community detectors (amlgm scan --config configs/patterns.yaml,
+# benchmarks/run_ibm.py --config configs/patterns.yaml).
+#
+# Thresholds tuned on the VALIDATION slices only (temporal 60/20/20 split, middle 20 %) of IBM AML
+# HI-Small and LI-Small; the test slices were never read. Grid search per detector (350 settings)
+# + coordinate ascent maximising the mean validation PR-AUC of the full scanner, scored as in the
+# benchmark (per-detector precision calibrated on validation, transaction score = max alert score).
+# Validation PR-AUC: HI-Small 0.0251 (defaults) -> 0.0528;
+#                    LI-Small 0.0010 (defaults) -> 0.0018.
+# Changed from the defaults: fan_in (3 counterparties, 120h), cycle (4d span, hop ratio >= 0.5),
+# scatter_gather (72h hops, no upper amount bound), gather_scatter (2 in / 2 out, 72h gather,
+# activity share 0.3), community (flow-through 0.6, member degree <= 20, internal share 0.4, 5d).
+fan_in:
+  enabled: true
+  min_counterparties: 3
+  window: 120h
+  min_total_amount: 0.0
+  min_burst_ratio: 3.0
+fan_out:
+  enabled: true
+  min_counterparties: 5
+  window: 24h
+  min_total_amount: 0.0
+  min_burst_ratio: 3.0
+smurfing:
+  enabled: true
+  structuring: true
+  split: true
+  threshold: 10000.0
+  band: 0.25
+  currency: US Dollar
+  min_transactions: 5
+  window: 24h
+  min_band_share: 0.5
+  min_parts: 4
+  split_window: 24h
+  split_tolerance: 0.15
+  max_part_fraction: 0.5
+cycle:
+  enabled: true
+  min_length: 3
+  max_length: 6
+  max_span: 4d
+  min_hop_ratio: 0.5
+  max_hop_ratio: 1.02
+  cross_currency: false
+  max_cycles: 100000
+  max_branching: 100
+  max_expansions: 3000000
+scatter_gather:
+  enabled: true
+  min_intermediaries: 3
+  hop_window: 72h
+  max_span: 3d
+  min_hop_ratio: 0.8
+  max_hop_ratio: 100.0
+  max_hub_degree: 30
+gather_scatter:
+  enabled: true
+  min_in: 2
+  min_out: 2
+  gather_window: 72h
+  scatter_window: 24h
+  min_conservation: 0.7
+  max_conservation: 1.05
+  min_burst_ratio: 3.0
+  min_activity_share: 0.3
+community:
+  enabled: true
+  min_size: 3
+  max_size: 40
+  min_flow_through: 0.6
+  max_member_degree: 20
+  min_relays: 1
+  min_internal_tx: 3
+  min_internal_share: 0.4
+  max_span: 5d
+  resolution: 1.0
+  seed: 0

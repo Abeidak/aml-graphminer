@@ -1,0 +1,24 @@
+# Web investigation interface on a synthetic demo dataset — nothing to prepare:
+#   docker compose -f docker/docker-compose.demo.yml up --build
+# then open http://127.0.0.1:8000/ui/ (API documentation: http://127.0.0.1:8000/docs).
+# Add your own transaction file from the interface ("Charger un fichier").
+services:
+  demo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: aml-graphminer:local
+    command: ["amlgm", "serve", "--demo", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"   # bound to localhost: the API has no authentication
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s

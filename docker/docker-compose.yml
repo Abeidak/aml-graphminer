@@ -1,0 +1,26 @@
+# Serve a trained model:
+#   MODEL_DIR=./runs/hgb docker compose -f docker/docker-compose.yml up --build
+# Nothing is baked into the image: the model directory is mounted read-only.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: aml-graphminer:local
+    command: ["amlgm", "serve", "/models/current", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"   # bound to localhost: the API has no authentication
+    volumes:
+      - ${MODEL_DIR:?set MODEL_DIR to a directory produced by `amlgm train`}:/models/current:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+    restart: unless-stopped

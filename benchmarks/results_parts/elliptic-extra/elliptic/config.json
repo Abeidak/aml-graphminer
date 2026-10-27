@@ -1,0 +1,30 @@
+{
+  "dataset": "elliptic",
+  "models": [
+    "xgb",
+    "logreg"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_max": 29,
+  "val_max": 34,
+  "summary": {
+    "nodes": 203769,
+    "edges": 234355,
+    "features": 165,
+    "time_steps": 49,
+    "labelled": 46564,
+    "illicit": 4545,
+    "licit": 42019,
+    "illicit_ratio_among_labelled": 0.09760759384932566
+  },
+  "split_sizes": {
+    "train": 26381,
+    "val": 3513,
+    "test": 16670
+  },
+  "gnn": null
+}

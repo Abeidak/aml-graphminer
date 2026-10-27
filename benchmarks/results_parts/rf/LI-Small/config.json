@@ -1,0 +1,116 @@
+{
+  "dataset": "LI-Small",
+  "models": [
+    "rf"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "fractions": [
+    0.6,
+    0.2,
+    0.2
+  ],
+  "features": {
+    "windows": [
+      "1h",
+      "24h",
+      "7d",
+      "all"
+    ],
+    "temporal": true,
+    "pagerank": true,
+    "betweenness": false,
+    "betweenness_k": 100
+  },
+  "tabular_node_features": true,
+  "patterns": {
+    "fan_in": {
+      "enabled": true,
+      "min_counterparties": 3,
+      "window": "120h",
+      "min_total_amount": 0.0,
+      "min_burst_ratio": 3.0
+    },
+    "fan_out": {
+      "enabled": true,
+      "min_counterparties": 5,
+      "window": "24h",
+      "min_total_amount": 0.0,
+      "min_burst_ratio": 3.0
+    },
+    "smurfing": {
+      "enabled": true,
+      "structuring": true,
+      "split": true,
+      "threshold": 10000.0,
+      "band": 0.25,
+      "currency": "US Dollar",
+      "min_transactions": 5,
+      "window": "24h",
+      "min_band_share": 0.5,
+      "min_parts": 4,
+      "split_window": "24h",
+      "split_tolerance": 0.15,
+      "max_part_fraction": 0.5
+    },
+    "cycle": {
+      "enabled": true,
+      "min_length": 3,
+      "max_length": 6,
+      "max_span": "4d",
+      "min_hop_ratio": 0.5,
+      "max_hop_ratio": 1.02,
+      "cross_currency": false,
+      "max_cycles": 100000,
+      "max_branching": 100,
+      "max_expansions": 3000000
+    },
+    "scatter_gather": {
+      "enabled": true,
+      "min_intermediaries": 3,
+      "hop_window": "72h",
+      "max_span": "3d",
+      "min_hop_ratio": 0.8,
+      "max_hop_ratio": 100.0,
+      "max_hub_degree": 30
+    },
+    "gather_scatter": {
+      "enabled": true,
+      "min_in": 2,
+      "min_out": 2,
+      "gather_window": "72h",
+      "scatter_window": "24h",
+      "min_conservation": 0.7,
+      "max_conservation": 1.05,
+      "min_burst_ratio": 3.0,
+      "min_activity_share": 0.3
+    },
+    "community": {
+      "enabled": true,
+      "min_size": 3,
+      "max_size": 40,
+      "min_flow_through": 0.6,
+      "max_member_degree": 20,
+      "min_relays": 1,
+      "min_internal_tx": 3,
+      "min_internal_share": 0.4,
+      "max_span": "5d",
+      "resolution": 1.0,
+      "seed": 0
+    }
+  },
+  "gnn": null,
+  "split_sizes": {
+    "train": 4154429,
+    "val": 1384810,
+    "test": 1384810
+  },
+  "illicit_in_split": {
+    "train": 1813,
+    "val": 827,
+    "test": 925
+  }
+}

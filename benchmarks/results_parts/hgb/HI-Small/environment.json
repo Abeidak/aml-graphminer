@@ -1,0 +1,12 @@
+{
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "aml_graphminer": "0.1.0",
+  "numpy": "2.5.4",
+  "pandas": "3.0.6",
+  "sklearn": "1.9.1",
+  "torch": "2.10.0+cpu",
+  "torch_geometric": "2.8.1",
+  "cuda": "False",
+  "wall_seconds": 255.8
+}

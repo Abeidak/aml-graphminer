@@ -1,0 +1,56 @@
+{
+  "dataset": "elliptic",
+  "models": [
+    "rf",
+    "hgb",
+    "gcn",
+    "sage",
+    "gat"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_max": 29,
+  "val_max": 34,
+  "summary": {
+    "nodes": 203769,
+    "edges": 234355,
+    "features": 165,
+    "time_steps": 49,
+    "labelled": 46564,
+    "illicit": 4545,
+    "licit": 42019,
+    "illicit_ratio_among_labelled": 0.09760759384932566
+  },
+  "split_sizes": {
+    "train": 26381,
+    "val": 3513,
+    "test": 16670
+  },
+  "gnn": {
+    "kind": "gcn",
+    "hidden": 64,
+    "layers": 2,
+    "dropout": 0.2,
+    "gat_heads": 4,
+    "num_neighbors": [
+      10,
+      5
+    ],
+    "batch_size": 4096,
+    "epochs": 200,
+    "lr": 0.01,
+    "weight_decay": 0.0,
+    "loss": "bce",
+    "pos_weight": 30.0,
+    "focal_gamma": 2.0,
+    "focal_alpha": 0.25,
+    "patience": 20,
+    "trainer": "torch",
+    "num_workers": 0,
+    "device": "auto",
+    "inference": "sampled"
+  }
+}

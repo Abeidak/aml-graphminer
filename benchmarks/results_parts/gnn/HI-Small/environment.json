@@ -1,0 +1,11 @@
+{
+  "python": "3.13.15",
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "aml_graphminer": "0.1.0",
+  "torch": "2.11.0+cu128",
+  "cuda": "True",
+  "runtime": "kaggle",
+  "gpu": "Tesla T4",
+  "torch_geometric": "2.8.1",
+  "wall_seconds": 5002.7
+}

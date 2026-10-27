@@ -1,0 +1,4 @@
+,,pr_auc,pr_auc,f1,f1,precision,precision,recall,recall,recall_at_k,recall_at_k
+,,mean,std,mean,std,mean,std,mean,std,mean,std
+dataset,model,,,,,,,,,,
+HI-Small,logreg,0.29417010732484505,0.0,0.3524460810099948,0.0,0.3341645885286783,0.0,0.37284362826933776,0.0,0.34891485809682804,0.0

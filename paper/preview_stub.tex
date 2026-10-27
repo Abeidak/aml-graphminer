@@ -1,0 +1,14 @@
+% Stand-in for Elsevier's `elsarticle` front-matter commands, used only to preview the draft when
+% elsarticle.cls is not installed. The journal layout is NOT reproduced.
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{natbib}
+\makeatletter
+\renewcommand{\title}[1]{\begin{center}{\Large\bfseries #1\par}\end{center}}
+\renewcommand{\author}[2][]{\begin{center}#2\end{center}\vspace{-1.2em}}
+\newcommand{\address}[2][]{\begin{center}\small\itshape #2\end{center}\vspace{-1.2em}}
+\newenvironment{frontmatter}{}{}
+\newcommand{\ead}[1]{}
+\newcommand{\fntext}[2][]{}
+\newenvironment{keyword}{\par\noindent\textbf{Keywords:} }{\par}
+\newcommand{\sep}{; }
+\makeatother

@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AML-GraphMiner — Investigation</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='8' cy='9' r='5' fill='%232563eb'/%3E%3Ccircle cx='24' cy='9' r='5' fill='%23dc2626'/%3E%3Ccircle cx='16' cy='24' r='5' fill='%232563eb'/%3E%3Cpath d='M8 9 24 9 16 24Z' fill='none' stroke='%2364748b' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M8 9 24 9 16 24Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <circle cx="8" cy="9" r="4.5" class="logo-a"/>
+        <circle cx="24" cy="9" r="4.5" class="logo-b"/>
+        <circle cx="16" cy="24" r="4.5" class="logo-a"/>
+      </svg>
+      <div>
+        <div class="brand-name">AML-GraphMiner</div>
+        <div class="brand-sub">Interface d'investigation anti-blanchiment</div>
+      </div>
+    </div>
+    <div class="model-badge" id="model-badge" title="Détecteur chargé">chargement…</div>
+  </header>
+
+  <section class="toolbar" aria-label="Jeux de données">
+    <label class="field">
+      <span>Jeu de données</span>
+      <select id="dataset-select" aria-label="Jeu de données analysé"></select>
+    </label>
+    <button type="button" id="btn-demo" class="primary">Jeu de démonstration</button>
+    <label class="button file-button">
+      Charger un fichier…
+      <input type="file" id="file-input" accept=".csv,.txt,.tsv,.json,.jsonl,.ndjson,.parquet,.pq">
+    </label>
+    <label class="field compact">
+      <span>Format</span>
+      <select id="schema-select" aria-label="Format du fichier">
+        <option value="auto">détection automatique</option>
+        <option value="ibm">IBM AML</option>
+        <option value="canonical">canonique</option>
+      </select>
+    </label>
+    <button type="button" id="btn-export-alerts" class="ghost" disabled>Exporter les alertes</button>
+    <button type="button" id="btn-export-scores" class="ghost" disabled>Exporter les scores</button>
+    <button type="button" id="btn-delete" class="ghost danger" disabled>Fermer</button>
+    <span id="status" class="status" role="status" aria-live="polite"></span>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="overview" class="active">Vue d'ensemble</button>
+    <button type="button" role="tab" data-tab="alerts">Alertes (motifs)</button>
+    <button type="button" role="tab" data-tab="transactions">Transactions</button>
+    <button type="button" role="tab" data-tab="accounts">Comptes</button>
+    <button type="button" role="tab" data-tab="about">À propos</button>
+  </nav>
+
+  <main>
+    <section id="empty" class="empty">
+      <h2>Aucun jeu de données analysé</h2>
+      <p>Chargez un fichier de transactions (CSV, JSON ou Parquet, au format IBM AML ou canonique :
+        <code>timestamp, sender, receiver, amount</code>…) ou générez un jeu de démonstration
+        synthétique contenant des motifs de blanchiment injectés.</p>
+      <p>Chaque jeu est <strong>analysé</strong> à son arrivée : les détecteurs de motifs structurels
+        (fan-in, fan-out, smurfing, cycles, scatter-gather, gather-scatter, communautés à risque)
+        produisent des alertes, et le modèle chargé attribue un score à chaque transaction.</p>
+    </section>
+
+    <section id="tab-overview" class="tab active" role="tabpanel">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid two">
+        <article class="card"><h3>Transactions par jour</h3><div id="chart-daily" class="chart"></div></article>
+        <article class="card"><h3>Alertes par motif</h3><div id="chart-patterns" class="chart"></div></article>
+        <article class="card"><h3>Distribution des scores du modèle</h3><div id="chart-scores" class="chart"></div></article>
+        <article class="card"><h3>Montants (log<sub>10</sub>)</h3><div id="chart-amounts" class="chart"></div></article>
+        <article class="card"><h3>Formats de paiement</h3><div id="chart-formats" class="chart"></div></article>
+        <article class="card"><h3>Performance (si étiquettes)</h3><div id="metrics" class="metrics"></div></article>
+      </div>
+    </section>
+
+    <section id="tab-alerts" class="tab" role="tabpanel">
+      <div class="filters">
+        <label class="field compact"><span>Motif</span><select id="alert-pattern"></select></label>
+        <label class="field compact"><span>Score min.</span>
+          <input id="alert-min" type="number" min="0" max="1" step="0.05" value="0"></label>
+        <span id="alert-count" class="muted"></span>
+      </div>
+      <div class="split">
+        <div class="list-pane">
+          <table class="table" id="alerts-table">
+            <thead><tr><th>#</th><th>Motif</th><th>Score</th><th>Tx</th><th>Comptes</th><th>Début</th><th class="num">Montant</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="pager" id="alerts-pager"></div>
+        </div>
+        <aside class="detail-pane" id="alert-detail"><p class="muted">Sélectionnez une alerte pour voir ses preuves et son sous-graphe.</p></aside>
+      </div>
+    </section>
+
+    <section id="tab-transactions" class="tab" role="tabpanel">
+      <div class="filters">
+        <label class="field compact"><span>Compte</span><input id="tx-account" type="search" placeholder="identifiant de compte"></label>
+        <label class="field compact"><span>Tri</span>
+          <select id="tx-sort"><option value="score">score du modèle</option><option value="amount">montant</option><option value="timestamp">date</option></select></label>
+        <label class="field compact"><span>Ordre</span>
+          <select id="tx-order"><option value="desc">décroissant</option><option value="asc">croissant</option></select></label>
+        <label class="check"><input id="tx-only-alerts" type="checkbox"> alertes du modèle uniquement</label>
+        <span id="tx-count" class="muted"></span>
+      </div>
+      <div class="split">
+        <div class="list-pane">
+          <table class="table" id="tx-table">
+            <thead><tr><th>Tx</th><th>Date</th><th>Émetteur</th><th>Destinataire</th><th class="num">Montant</th><th>Format</th><th>Score</th><th>Motif</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="pager" id="tx-pager"></div>
+        </div>
+        <aside class="detail-pane" id="tx-detail"><p class="muted">Sélectionnez une transaction pour l'expliquer.</p></aside>
+      </div>
+    </section>
+
+    <section id="tab-accounts" class="tab" role="tabpanel">
+      <form class="filters" id="account-form">
+        <label class="field"><span>Compte</span><input id="account-input" type="search" placeholder="ex. 70_8000ABCD" required></label>
+        <button type="submit" class="primary">Afficher le profil</button>
+        <span class="muted">Astuce : cliquez sur un nœud d'un graphe pour ouvrir le profil du compte.</span>
+      </form>
+      <div id="account-detail"></div>
+    </section>
+
+    <section id="tab-about" class="tab" role="tabpanel">
+      <div class="grid two">
+        <article class="card"><h3>Détecteur chargé</h3><div id="about-model"></div></article>
+        <article class="card"><h3>Motifs détectés</h3><div id="about-patterns"></div></article>
+        <article class="card"><h3>Liens</h3>
+          <ul class="links">
+            <li><a href="../docs" target="_blank" rel="noopener">Documentation interactive de l'API (OpenAPI / Swagger)</a></li>
+            <li><a href="../redoc" target="_blank" rel="noopener">Documentation de l'API (ReDoc)</a></li>
+            <li><a href="../health" target="_blank" rel="noopener">État du service (/health)</a></li>
+          </ul>
+          <p class="muted small">Outil de recherche — ce n'est pas un produit de conformité. Les alertes
+            doivent être revues par un analyste ; les explications sont des approximations locales.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay" hidden><div class="spinner"></div><div id="overlay-text">Analyse en cours…</div></div>
+  <script src="app.js"></script>
+</body>
+</html>

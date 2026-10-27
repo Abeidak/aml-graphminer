@@ -1,0 +1,210 @@
+"""Run every enabled structural-motif detector and aggregate the alerts."""
+
+from __future__ import annotations
+
+import json
+import time
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from ...exceptions import ConfigError
+from .base import Alert, PatternDetector, TxArrays
+from .community import CommunityDetector
+from .config import PatternConfig
+from .cycles import CycleDetector
+from .fan import FanInDetector, FanOutDetector
+from .layering import GatherScatterDetector, ScatterGatherDetector
+from .smurfing import SmurfingDetector
+
+DetectorFactory = Callable[[PatternConfig], PatternDetector]
+
+DETECTOR_REGISTRY: dict[str, DetectorFactory] = {
+    "fan_in": lambda c: FanInDetector(c.fan_in),
+    "fan_out": lambda c: FanOutDetector(c.fan_out),
+    "smurfing": lambda c: SmurfingDetector(c.smurfing),
+    "cycle": lambda c: CycleDetector(c.cycle),
+    "scatter_gather": lambda c: ScatterGatherDetector(c.scatter_gather),
+    "gather_scatter": lambda c: GatherScatterDetector(c.gather_scatter),
+    "community": lambda c: CommunityDetector(c.community),
+}
+
+
+def register_detector(name: str, factory: DetectorFactory) -> None:
+    """Plug a custom detector into the scanner (``factory(config) -> PatternDetector``).
+
+    A researcher can thus test their own motif without touching the rest of the pipeline.
+    """
+    DETECTOR_REGISTRY[name] = factory
+
+
+@dataclass
+class ScanResult:
+    """Alerts found by a scan, with helpers to turn them into scores and tables."""
+
+    alerts: list[Alert]
+    tx_ids: np.ndarray
+    timings: dict[str, float] = field(default_factory=dict)
+    calibration: dict[str, float] = field(default_factory=dict)
+
+    def __len__(self) -> int:
+        return len(self.alerts)
+
+    def weight(self, alert: Alert) -> float:
+        """Alert score after the optional per-pattern precision calibration."""
+        return alert.score * self.calibration.get(alert.pattern, 1.0)
+
+    def to_frame(self) -> pd.DataFrame:
+        """One row per alert, sorted by decreasing (calibrated) score."""
+        cols = [
+            "alert_id",
+            "pattern",
+            "score",
+            "n_tx",
+            "n_accounts",
+            "start",
+            "end",
+            "total_amount",
+        ]
+        if not self.alerts:
+            return pd.DataFrame(columns=[*cols, "accounts", "tx_ids"])
+        rows = [
+            {
+                "alert_id": i,
+                "pattern": a.pattern,
+                "score": self.weight(a),
+                "n_tx": len(a.tx_ids),
+                "n_accounts": len(a.accounts),
+                "start": a.start,
+                "end": a.end,
+                "total_amount": a.total_amount,
+                "accounts": a.accounts,
+                "tx_ids": a.tx_ids,
+            }
+            for i, a in enumerate(self.alerts)
+        ]
+        return pd.DataFrame(rows).sort_values("score", ascending=False, ignore_index=True)
+
+    def transaction_scores(self) -> tuple[np.ndarray, np.ndarray]:
+        """Per-transaction score (max over alerts) and name of the strongest pattern.
+
+        Returns ``(scores, top_pattern)`` aligned with the scanned frame; transactions covered
+        by no alert get score ``0`` and pattern ``""``.
+        """
+        n = len(self.tx_ids)
+        scores = np.zeros(n)
+        top = np.full(n, "", dtype=object)
+        index = pd.Index(self.tx_ids)
+        for alert in self.alerts:
+            pos = index.get_indexer(alert.tx_ids)
+            pos = pos[pos >= 0]
+            w = self.weight(alert)
+            better = scores[pos] < w
+            scores[pos[better]] = w
+            top[pos[better]] = alert.pattern
+        return scores, top
+
+    def account_scores(self) -> dict[str, float]:
+        """Highest alert score every account takes part in."""
+        out: dict[str, float] = {}
+        for alert in self.alerts:
+            w = self.weight(alert)
+            for acc in alert.accounts:
+                if w > out.get(acc, 0.0):
+                    out[acc] = w
+        return out
+
+    def summary(self) -> dict[str, Any]:
+        counts: dict[str, int] = {}
+        for a in self.alerts:
+            counts[a.pattern] = counts.get(a.pattern, 0) + 1
+        scores, _ = self.transaction_scores()
+        return {
+            "n_alerts": len(self.alerts),
+            "alerts_by_pattern": counts,
+            "n_flagged_transactions": int((scores > 0).sum()),
+            "n_transactions": len(self.tx_ids),
+            "timings_seconds": {k: round(v, 3) for k, v in self.timings.items()},
+        }
+
+    def to_json(self, path: str | None = None, indent: int | None = 2) -> str:
+        """Serialise alerts (+ summary) to JSON; writes to ``path`` when given."""
+        payload = {
+            "summary": self.summary(),
+            "alerts": [{**a.to_dict(), "score": round(self.weight(a), 6)} for a in self.alerts],
+        }
+        text = json.dumps(payload, indent=indent)
+        if path:
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(text)
+        return text
+
+
+class PatternScanner:
+    """Orchestrates the deterministic detectors.
+
+    Example
+    -------
+    >>> scanner = PatternScanner()                       # doctest: +SKIP
+    >>> result = scanner.scan(df)                        # doctest: +SKIP
+    >>> result.to_frame().head()                         # doctest: +SKIP
+    """
+
+    def __init__(
+        self,
+        config: PatternConfig | None = None,
+        only: Iterable[str] | None = None,
+    ) -> None:
+        self.config = config or PatternConfig()
+        names = list(only) if only is not None else list(DETECTOR_REGISTRY)
+        unknown = [n for n in names if n not in DETECTOR_REGISTRY]
+        if unknown:
+            raise ConfigError(
+                f"unknown detector(s) {unknown}; available: {sorted(DETECTOR_REGISTRY)}"
+            )
+        # sections switched off in the configuration are not even instantiated; custom
+        # detectors (no section in the configuration) are always kept
+        self.detectors: dict[str, PatternDetector] = {
+            n: DETECTOR_REGISTRY[n](self.config)
+            for n in names
+            if getattr(getattr(self.config, n, None), "enabled", True)
+        }
+        self.calibration: dict[str, float] = {}
+
+    def scan(self, df: pd.DataFrame) -> ScanResult:
+        """Run all detectors on a canonical, time-sorted transaction table."""
+        ctx = TxArrays.from_frame(df)
+        alerts: list[Alert] = []
+        timings: dict[str, float] = {}
+        for name, detector in self.detectors.items():
+            t0 = time.perf_counter()
+            alerts.extend(detector.detect(ctx))
+            timings[name] = time.perf_counter() - t0
+        return ScanResult(alerts, ctx.tx_ids, timings, dict(self.calibration))
+
+    def fit_calibration(self, df: pd.DataFrame, prior: float = 1.0) -> dict[str, float]:
+        """Learn the precision of every detector on a *labelled validation slice*.
+
+        The precision of a pattern is the (Laplace-smoothed) share of the transactions its alerts
+        cover that are labelled illicit. Calibrated scores ``precision x alert score`` let alerts
+        of different detectors be ranked on a common scale.
+        """
+        if df["label"].isna().all():
+            raise ConfigError("calibration needs labelled transactions")
+        result = self.scan(df)
+        labels = df["label"].fillna(0).to_numpy()
+        index = pd.Index(result.tx_ids)
+        by_pattern: dict[str, set[int]] = {}
+        for alert in result.alerts:
+            by_pattern.setdefault(alert.pattern, set()).update(
+                index.get_indexer(alert.tx_ids).tolist()
+            )
+        self.calibration = {}
+        for name in self.detectors:
+            covered = np.array(sorted(by_pattern.get(name, set())), dtype=int)
+            positives = float(labels[covered].sum()) if len(covered) else 0.0
+            self.calibration[name] = (positives + prior) / (len(covered) + 2.0 * prior)
+        return dict(self.calibration)

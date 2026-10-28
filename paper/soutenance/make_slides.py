@@ -297,8 +297,10 @@ def main() -> Path:
             "(taux déduits des transactions multi-devises, moindres carrés)",
             "Ils durent 27 à 80 h, la validation ≈ 51 h → contexte des 4 jours précédents, sans étiquettes",
             "Tous les motifs annotés sont des virements ACH → recherche limitée à l'ACH (choisie sur la validation)",
-            "Cycles jusqu'à 12 sauts, montants pouvant varier de −50 % à +50 % par saut (réglé sur la validation)",
-            "Chaque alerte garde ses preuves : comptes, transactions, montants convertis",
+            "Motif « stack » = relais A → B → C qui change de devise → nouveau détecteur de relais",
+            "Score d'alerte mal ordonné (fan-in inversé) → précision calibrée par tranche de score",
+            f"Résultat : PR-AUC des motifs {get.get(('HI-Small', 'patterns'), '?')} sur HI-Small "
+            "(0,005 au départ), intervalle à 95 % 0,479–0,526",
         ],
     )
     hybrid_rows = []
@@ -368,9 +370,11 @@ def main() -> Path:
     deck.bullets(
         "Bilan par rapport au cahier des charges",
         [
-            "Atteint : O1–O6, PR-AUC > 0,5 sur HI-Small (GraphSAGE), interface web, hybride",
-            f"Non atteint : J2 (motifs seuls > 0,5) — motifs {get.get(('HI-Small', 'patterns'), '?')} sur HI-Small",
-            f"LI-Small reste difficile : meilleur modèle {get.get(('LI-Small', 'rf'), '?')}",
+            "Atteint : O1–O6, J3 (GraphSAGE > 0,5 sur HI-Small), interface web, hybride",
+            f"J2 atteint de justesse : motifs seuls {get.get(('HI-Small', 'patterns'), '?')} sur HI-Small "
+            "(réglages et calibration choisis sur la validation)",
+            f"LI-Small reste difficile : meilleur modèle seul {get.get(('LI-Small', 'rf'), '?')}, "
+            "hybride forêt + motifs 0,236",
             "Reste à faire (comptes personnels) : dépôt public + Zenodo, PyPI, ReadTheDocs, Hub, soumission",
         ],
     )

@@ -111,27 +111,31 @@ degrés, motifs). Elliptic : pas de temps 1–29 / 30–34 / 35–49, prévalenc
 | XGBoost | 0,474 ± 0,005 | 0,078 ± 0,007 | 0,788 ± 0,002 |
 | GAT | 0,447 ± 0,007 | 0,110 ± 0,026 | 0,351 ± 0,042 |
 | GCN | 0,374 ± 0,031 | 0,074 ± 0,024 | 0,300 ± 0,055 |
-| motifs, sans apprentissage (réglés sur la validation) | 0,340 | 0,147 | — |
+| motifs (règles réglées et calibrées sur la validation) | 0,503 | 0,189 | — |
 | régression logistique | 0,294 | 0,032 | 0,209 |
 | auto-encodeur (sans étiquettes) | 0,003 ± 0,001 | 0,001 ± 0,000 | — |
 
 5.4 Objectifs du CDC : PR-AUC > 0,5 atteint par GraphSAGE sur HI-Small (J3) ; non atteint sur
-LI-Small (meilleur 0,191) ; le jalon J2 (motifs > 0,5) n'est pas atteint (0,340 sur HI-Small,
-0,147 sur LI-Small), mais les motifs sont passés de 0,005 / 0,001 à ces valeurs. Analyse des causes
-[L] et effet de chaque correction mesuré sur la validation de HI-Small (PR-AUC) : configuration
-précédente 0,053 ; + conversion des devises 0,054 (les motifs IBM changent de devise à presque
-chaque saut, mais durent 27 à 80 h, davantage que la fenêtre de validation de ≈ 51 h) ;
-+ contexte des 4 jours précédents 0,085 ; + restriction à l'ACH 0,162 ; + nouveau réglage complet
-0,258 (le même réglage sur tous les formats de paiement s'arrête à 0,164 ; LI-Small : 0,029 contre
-0,093 avec l'ACH). Rappel « propre » des cycles sur le test : 0 → 0,81 ; scatter-gather : 0,02 → 0,85.
+LI-Small (meilleur 0,191) ; le jalon J2 (motifs > 0,5) est atteint de justesse : 0,503 sur
+HI-Small (intervalle bootstrap à 95 % : 0,479–0,526), 0,189 sur LI-Small, contre 0,005 / 0,001 au
+départ. Analyse des causes [L] et effet de chaque étape mesuré sur la validation de HI-Small
+(PR-AUC) : configuration de départ 0,053 ; + conversion des devises 0,054 (les motifs IBM changent
+de devise à presque chaque saut, mais durent 27 à 80 h, davantage que la fenêtre de validation de
+≈ 51 h) ; + contexte des 4 jours précédents 0,085 ; + restriction à l'ACH 0,162 ; + nouveau
+réglage 0,258 (tous formats : 0,164) ; + durée minimale des fans, exclusion des virements
+internes et multi-devises 0,288. Mesures hors échantillon (calibration sur une moitié de la
+validation, mesure sur l'autre) : précision par tranche de score 0,177 → 0,281 ; détecteur de
+relais (motif *stack*) → 0,387. Le test n'a servi qu'à rapporter (0,340, 0,399, puis 0,503).
+Plafond structurel : 36 % du blanchiment de la validation n'appartient à aucun motif. Rappel
+« propre » sur le test : cycles 0 → 0,63, scatter-gather 0,02 → 0,81, stack 0 → 0,55.
 5.5 Rappel par motif du scanner (`per_pattern_recall.csv`) et comparaison supervisé /
 non supervisé (l'auto-encodeur est au niveau du hasard : il signale l'inhabituel, pas l'illicite).
 5.6 Détecteur hybride [H] (`benchmarks/results_parts/hybrid/README.md`, modèles Kaggle graine 0,
-empilement ajusté sur la validation) : sur HI-Small la combinaison améliore les trois modèles —
-forêt aléatoire 0,519 → 0,562, HistGB 0,484 → 0,545, GraphSAGE 0,504 → 0,527 (motifs seuls
-0,340) ; sur LI-Small elle n'apporte rien (forêt 0,191 → 0,186, GraphSAGE 0,175 → 0,168, HistGB
-0,106 → 0,113, sous les motifs seuls à 0,147) : discussion (prévalence 0,067 %, empilement
-linéaire appris sur une validation de 827 positifs).
+empilement ajusté sur la validation) : la combinaison dépasse chacune de ses parties — HI-Small
+forêt aléatoire 0,519 → 0,614, HistGB 0,484 → 0,641, GraphSAGE 0,504 → 0,641 (motifs seuls
+0,503) ; LI-Small forêt 0,191 → 0,236, HistGB 0,106 → 0,189 ; seule exception GraphSAGE sur
+LI-Small (0,175 → 0,184, sous les motifs seuls à 0,189) : discussion (complémentarité des règles
+et des modèles, empilement linéaire appris sur une validation de 827 positifs).
 5.7 Études de cas d'explication [X] : pour GraphSAGE sur HI-Small, les 8 transactions les mieux
 notées gardent un score de 0,960–1,000 sans leur voisinage (0,988–1,000 avec) ; retirer les
 5 voisins classés premiers par GNNExplainer ne change pas le score : la décision repose sur la

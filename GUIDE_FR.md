@@ -188,11 +188,13 @@ Puis <http://127.0.0.1:7474> et les requêtes de `neo4j-import\queries.cypher` (
    Les réglages des motifs de `configs\patterns.yaml` ont été choisis sur les tranches de
    validation de HI-Small et LI-Small (jamais sur le test) : passez `--config configs\patterns.yaml`.
    Ils convertissent les montants en dollars, donnent au scanner les 4 jours précédant chaque
-   tranche (sans étiquettes) et limitent la recherche aux virements ACH : PR-AUC de test des
-   motifs 0,340 (HI-Small) et 0,147 (LI-Small), contre 0,005 et 0,001 auparavant ; objectif J2
-   (> 0,5) non atteint. Détecteur hybride sur les modèles Kaggle (sans réentraînement) :
+   tranche (sans étiquettes), limitent la recherche aux virements ACH, ajoutent un détecteur de
+   relais (motif *stack*) et calibrent une précision par tranche de score : PR-AUC de test des
+   motifs **0,503** sur HI-Small (intervalle à 95 % : 0,479–0,526) et 0,189 sur LI-Small, contre
+   0,005 et 0,001 au départ ; objectif J2 (> 0,5) atteint de justesse. Détecteur hybride sur les
+   modèles Kaggle (sans réentraînement) :
    `python benchmarks\run_hybrid.py benchmarks\results_parts\hybrid\hybrid.json HI-Small:rf,hgb,sage LI-Small:rf,hgb,sage`
-   (HI-Small : forêt aléatoire 0,519 → 0,562 ; aucun gain sur LI-Small).
+   (HI-Small : jusqu'à 0,641 ; LI-Small : forêt aléatoire 0,191 → 0,236).
 5. GNN sur GPU (sans VS Code, dans le navigateur) — **Kaggle**, recommandé car les fichiers IBM y
    sont déjà :
    1. `python -m build` → `dist\aml_graphminer-0.1.0-py3-none-any.whl` ;

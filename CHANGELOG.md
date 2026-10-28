@@ -106,6 +106,13 @@ IBM AML *LI-Small* and *HI-Small*).
   motif straddling its start is seen whole; only the slice is scored.
 - `transaction_types` restricts the motif search to some payment formats (`[ACH]` in the tuned
   IBM configuration, chosen on validation).
+- **Motif scanner for J2** (test PR-AUC HI-Small 0.399 → 0.503, LI-Small 0.145 → 0.189, every
+  setting chosen on validation): `relay` detector (`A -> B -> C`, the account forwards 0.9–1.2x
+  what it received in another currency: the IBM *stack* motif, opt-in), precision calibrated per
+  band of alert score (`calibration_bins`), fan `min_span` / `min_mean_amount`, gather-scatter
+  `scatter_lead`, scanner `exclude` (self-transfers, same bank, cross-currency) and `combine`
+  (`max` / `noisy_or`), `PatternScanner.calibrate` on an existing scan; per-motif recall maps
+  *stack* to `relay`.
 - **Hybrid detector** (`HybridDetector`, `amlgm train --model hybrid --base DIR`, benchmark model
   `hybrid-<model>`): a saved model stacked with the motif scanner by a logistic regression fitted
   on the validation slice, with the test metrics of the model alone and of the motifs alone.
@@ -119,10 +126,11 @@ IBM AML *LI-Small* and *HI-Small*).
 
 ### Known limitations
 
-- The motif scanner, tuned on validation with currency conversion, history context and the ACH
-  restriction, reaches a test PR-AUC of 0.340 (HI-Small) and 0.147 (LI-Small), below the 0.5
-  objective (it was 0.005 / 0.001); stacked with a model it lifts HI-Small (random forest 0.519 →
-  0.562, one seed) but not LI-Small; the unsupervised GAE is at chance level;
+- The motif scanner reaches the 0.5 objective on HI-Small only narrowly (test PR-AUC 0.503, 95 %
+  bootstrap interval 0.479–0.526; LI-Small 0.189), with settings that are partly properties of the
+  IBM simulator (ACH only, no cross-currency payment) and a calibration that uses the validation
+  labels; 36 % of the HI-Small laundering belongs to no motif; the unsupervised GAE is at chance
+  level;
   on Elliptic the GNNs (best: GraphSAGE 0.497) stay well below the tree models (about 0.79).
 - GNN training needs `pyg-lib` or `torch-sparse` in addition to `pip install aml-graphminer[gnn]`.
 - The REST API has no authentication.

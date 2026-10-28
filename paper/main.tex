@@ -54,7 +54,7 @@ through pattern evidence, occlusion, GNNExplainer, PGExplainer, Captum and atten
 much the neighbourhood really changes the score. A web investigation interface, a command line, a
 REST API, MLflow, Hugging Face Hub and Neo4j exports, notebooks and benchmark scripts make studies
 reproducible. On IBM AML HI-Small (0.18\,\% laundering), GraphSAGE reaches a test PR-AUC of 0.531,
-the untrained motif scanner 0.340 and a random forest stacked with the motifs 0.562. The toolkit targets researchers, teachers and institutions, such as regional banks, that
+the rule-based motif scanner 0.503 and GraphSAGE stacked with the motifs 0.641. The toolkit targets researchers, teachers and institutions, such as regional banks, that
 cannot afford commercial AML suites.
 \end{abstract}
 
@@ -134,10 +134,12 @@ thin wrapper around the same Python SDK.}
 \paragraph{Detectors} Six motif detectors --- fan-in, fan-out, smurfing, time-respecting cycles,
 scatter-gather, gather-scatter --- and a risk-community detector (relay accounts, Louvain
 \cite{blondel2008fast}) need no training; each alert carries its accounts, transactions and
-numbers. Amounts are converted to a reference currency with exchange rates inferred from the
-cross-currency transactions themselves, and a time slice is scanned with the preceding days as
-unlabelled context, so a motif that changes currency or straddles the start of the slice is still
-seen whole. Learned detectors are logistic regression, random forest, gradient boosting, XGBoost,
+numbers; a relay detector follows money forwarded almost intact through an account. Amounts are
+converted to a reference currency with exchange rates inferred from the cross-currency
+transactions themselves, and a time slice is scanned with the preceding days as unlabelled
+context, so a motif that changes currency or straddles the start of the slice is still seen whole.
+Alerts of different detectors are ranked by a precision calibrated on validation data, per band of
+alert score. Learned detectors are logistic regression, random forest, gradient boosting, XGBoost,
 GCN, GraphSAGE and GAT edge classifiers with neighbour sampling and a graph auto-encoder trained
 without labels \cite{kipf2016variational,ding2019deep}. A hybrid detector stacks any of them with
 the motif scanner (a three-coefficient logistic regression fitted on validation). All share one
@@ -151,11 +153,13 @@ a generated model card.
 
 \begin{lstlisting}
 patterns:
-  fan_in:  {min_counterparties: 3, window: 120h, min_burst_ratio: 0}
-  cycle:   {max_length: 12, max_span: 4d, min_hop_ratio: 0.5, max_hop_ratio: 1.5}
+  fan_in:  {min_counterparties: 3, window: 120h, min_span: 24h, min_mean_amount: 5000}
+  cycle:   {max_length: 12, max_span: 4d, max_hop_ratio: 1.2}
+  relay:   {enabled: true, hop_window: 96h, min_hop_ratio: 0.9, max_hop_ratio: 1.2}
   currency: {convert: true, reference: US Dollar}
   lookback: 4d                  # unlabelled context before a scored slice
   transaction_types: [ACH]
+  calibration_bins: 8           # precision per band of alert score
 \end{lstlisting}
 
 \paragraph{Protocol and explanations} Transactions are split by time (60/20/20); statistics and
@@ -194,14 +198,15 @@ compare every detector on IBM AML HI-Small and LI-Small (5.08 and 6.92 million t
 on Elliptic (Table~\ref{tab:results}). On HI-Small GraphSAGE reaches a test PR-AUC of
 $0.531\pm0.022$ over three seeds, ahead of the random forest ($0.499\pm0.017$); on the harder
 LI-Small file (prevalence 0.067\,\%) the random forest leads ($0.191\pm0.007$). The motif scanner
-alone, without any training and tuned on validation only, reaches 0.340 on HI-Small and 0.147 on
-LI-Small --- below the best learned models, above logistic regression, and on LI-Small above
-HistGradientBoosting, GCN and GAT --- with exact, auditable alerts. Currency conversion and the
-unlabelled history context are what make this possible: without them the same scanner reached
-0.005 and 0.001, its cycle detector recovering none of the annotated cycles (0.81 of them on
-HI-Small now). Stacking a saved model with the motifs raises the HI-Small test PR-AUC from 0.519
-to 0.562 for a random forest and from 0.504 to 0.527 for GraphSAGE (one seed), but brings nothing
-on LI-Small (0.191 to 0.186 for the random forest). On Elliptic the
+alone --- deterministic rules whose settings and per-band precisions were chosen on the
+validation split only --- reaches 0.503 on HI-Small (95\,\% bootstrap interval 0.479--0.526),
+next to GraphSAGE and the random forest, and 0.189 on LI-Small, above HistGradientBoosting, GCN
+and GAT, with exact, auditable alerts. The original detectors reached 0.005 and 0.001; currency
+conversion, the unlabelled history context, the relay detector and the per-band calibration made
+the difference, while 36\,\% of the laundering belongs to no motif and stays out of reach of any
+rule. The two views are complementary: stacking a saved model with the motifs raises the HI-Small
+test PR-AUC from 0.484 to 0.641 for HistGradientBoosting and from 0.504 to 0.641 for GraphSAGE,
+and LI-Small from 0.191 to 0.236 for the random forest (one seed). On Elliptic the
 tree models (PR-AUC about 0.79) clearly beat the GNNs (GraphSAGE $0.497\pm0.056$), which shows
 why the toolkit always reports both.
 
@@ -263,8 +268,9 @@ publications and projects that use the software once they exist.}
 \amlgm{} unifies deterministic typology detection, learned graph models, their combination and
 their explanation behind one leak-free temporal protocol and four interfaces. Measured on the public
 benchmarks, it reproduces the strength of GNNs on IBM AML HI-Small, shows where tree models remain
-better (LI-Small, Elliptic), shows that typology rules become useful once amounts are compared
-across currencies and motifs are seen whole (alone, and stacked with a model on HI-Small), and
+better (LI-Small, Elliptic), shows that typology rules reach a PR-AUC of 0.5 on HI-Small once
+amounts are compared across currencies, motifs are seen whole and alerts are calibrated --- and
+lift every model they are stacked with ---, and
 exposes the limits of edge-mask explanations instead of hiding them. The IBM data are synthetic, so scores measure how well a
 method recovers the generator's motifs, not real-world performance; motif settings must be retuned
 on institutional data (the restriction to ACH transfers chosen on IBM validation data is a property

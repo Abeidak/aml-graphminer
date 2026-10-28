@@ -113,24 +113,26 @@ GNNs on a Kaggle T4 GPU with notebook `04`; motif thresholds of
 | PR-AUC (test) | HI-Small (prevalence 0.177 %) | LI-Small (prevalence 0.067 %) |
 |---|---|---|
 | GraphSAGE | **0.531 ± 0.022** | 0.176 ± 0.018 |
+| structural motifs (no learned model) | 0.503 | 0.189 |
 | random forest | 0.499 ± 0.017 | **0.191 ± 0.007** |
 | HistGradientBoosting | 0.476 ± 0.011 | 0.106 ± 0.016 |
 | XGBoost | 0.474 ± 0.005 | 0.078 ± 0.007 |
 | GAT | 0.447 ± 0.007 | 0.110 ± 0.026 |
 | GCN | 0.374 ± 0.031 | 0.074 ± 0.024 |
-| structural motifs (no training) | 0.340 | 0.147 |
 | logistic regression | 0.294 | 0.032 |
 | graph auto-encoder (no labels) | 0.003 ± 0.001 | 0.001 ± 0.000 |
 
 GPU results are merged with `python benchmarks/make_report.py benchmarks/results <part folders>`
-(see [`benchmarks/README.md`](benchmarks/README.md)). The motifs went from 0.005 / 0.001 to these
-values with currency conversion, a 4-day unlabelled context before each scanned slice and the ACH
-restriction chosen on validation ([`docs/patterns.md`](docs/patterns.md)).
+(see [`benchmarks/README.md`](benchmarks/README.md)). The motifs (deterministic rules whose
+settings and calibration were chosen on the validation split) went from 0.005 / 0.001 to these
+values — 95 % bootstrap interval 0.479–0.526 on HI-Small — with currency conversion, a 4-day
+unlabelled context before each scanned slice, the ACH restriction, a relay detector and a
+precision per band of alert score ([`docs/limitations.md`](docs/limitations.md)).
 
 Hybrid detector (saved Kaggle model, seed 0, + motifs, stacked on validation; test PR-AUC,
 [`benchmarks/results_parts/hybrid`](benchmarks/results_parts/hybrid/README.md)): HI-Small random
-forest 0.519 → **0.562**, HistGradientBoosting 0.484 → 0.545, GraphSAGE 0.504 → 0.527; no gain on
-LI-Small (random forest 0.191 → 0.186).
+forest 0.519 → 0.614, HistGradientBoosting 0.484 → **0.641**, GraphSAGE 0.504 → **0.641**;
+LI-Small random forest 0.191 → **0.236**.
 
 Elliptic Bitcoin (node classification, time steps 35–49 as test, prevalence 6.5 %, 3 seeds, Kaggle
 T4): HistGradientBoosting 0.790 ± 0.004, XGBoost 0.788 ± 0.002, random forest 0.786 ± 0.001,

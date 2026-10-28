@@ -19,10 +19,10 @@ AML and Elliptic datasets.
 > synthetic data (`--synthetic`) only check that the pipeline works, and
 > `make_report.py` labels them as such (folders whose name contains `smoke` are git-ignored).
 >
-> The motif rows use the configuration tuned on validation with currency conversion, a 4-day
-> unlabelled context before each slice and the ACH restriction (`configs/patterns.yaml`); they
-> take 27 s per file. Before these three changes the same scanner reached 0.005 (HI-Small) and
-> 0.001 (LI-Small).
+> The motif rows use the configuration chosen on validation (`configs/patterns.yaml`: currency
+> conversion, 4-day unlabelled context, ACH only, relay detector, 8 calibration bands); test
+> PR-AUC 0.503 (HI-Small, bootstrap 95 % interval 0.479–0.526) and 0.189 (LI-Small), against
+> 0.005 and 0.001 for the original detectors.
 >
 > Measured costs on a 12-thread laptop CPU, 16 GB RAM (HI-Small, 3 seeds): motifs (without the
 > ACH restriction) 4 min,

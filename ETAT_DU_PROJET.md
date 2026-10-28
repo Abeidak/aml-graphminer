@@ -25,8 +25,8 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | jalon | état | mesure |
 |---|---|---|
 | J1 — Pipeline opérationnel, EDA | ✅ | HI-Small chargé (5 078 345 transactions), EDA de HI et LI-Small (`results/eda-*`). |
-| J2 — Motifs : PR-AUC > 0,5 sur HI-Small | ❌ (amélioré) | **0,340** sur le test (0,005 avant), LI-Small 0,147 (0,001 avant). Objectif non atteint. |
-| J3 — 3 GNN entraînés, benchmark publié | ✅ (benchmark dans le dépôt privé) | GraphSAGE **0,531 ± 0,022** sur HI-Small (> 0,5), GAT 0,447, GCN 0,374 ; meilleur hybride 0,562. |
+| J2 — Motifs : PR-AUC > 0,5 sur HI-Small | ✅ de justesse | **0,503** sur le test (intervalle à 95 % : 0,479–0,526), LI-Small 0,189 ; 0,005 / 0,001 au départ. Règles déterministes dont les réglages et la calibration viennent de la validation ; ACH et exclusion multi-devises propres au simulateur IBM. |
+| J3 — 3 GNN entraînés, benchmark publié | ✅ (benchmark dans le dépôt privé) | GraphSAGE **0,531 ± 0,022** sur HI-Small (> 0,5), GAT 0,447, GCN 0,374 ; meilleur hybride 0,641. |
 | J4 — Article soumis | ⏳ 👤 | Manuscrit prêt hors champs personnels (voir L7). |
 
 ## 3. Objectifs (O1–O6) et fiche sujet
@@ -34,7 +34,7 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | objectif | état |
 |---|---|
 | O1 ingestion IBM / Elliptic / CSV-JSON-Parquet, Pydantic, NetworkX + PyG, Neo4j | ✅ (validation Pydantic branchée sur l'API et l'ingestion) |
-| O2 motifs : smurfing, fan-in/out, cycles, scatter-gather, gather-scatter + communautés à risque | ✅ (conversion des devises, contexte historique, filtre ACH ; J2 non atteint) |
+| O2 motifs : smurfing, fan-in/out, cycles, scatter-gather, gather-scatter + communautés à risque | ✅ (+ relais, conversion des devises, contexte historique, filtre ACH, calibration par tranche ; J2 atteint de justesse) |
 | O3 GCN, GraphSAGE, GAT + GNN non supervisé | ✅ |
 | O4 GNNExplainer, PGExplainer, Captum, attention, sous-graphe, JSON | ✅ (+ effet mesuré du voisinage, explication par lot) |
 | O5 PR-AUC, F1, recall@k sur IBM HI/LI et Elliptic, RF / XGBoost | ✅ (3 graines, écarts-types) |
@@ -46,15 +46,15 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | modèle | HI-Small | LI-Small | Elliptic |
 |---|---|---|---|
 | GraphSAGE | **0,531 ± 0,022** | 0,176 ± 0,018 | 0,497 ± 0,056 |
+| motifs (règles, sans modèle appris) | 0,503 | 0,189 | — |
 | forêt aléatoire | 0,499 ± 0,017 | **0,191 ± 0,007** | 0,786 ± 0,001 |
 | HistGradientBoosting | 0,476 ± 0,011 | 0,106 ± 0,016 | **0,790 ± 0,004** |
 | XGBoost | 0,474 ± 0,005 | 0,078 ± 0,007 | 0,788 ± 0,002 |
 | GAT | 0,447 ± 0,007 | 0,110 ± 0,026 | 0,351 ± 0,042 |
 | GCN | 0,374 ± 0,031 | 0,074 ± 0,024 | 0,300 ± 0,055 |
-| motifs (sans apprentissage) | 0,340 | 0,147 | — |
 | régression logistique | 0,294 | 0,032 | 0,209 |
 | auto-encodeur (sans étiquettes) | 0,003 | 0,001 | — |
-| hybride forêt + motifs (graine 0) | **0,562** (forêt seule 0,519) | 0,186 (forêt seule 0,191) | — |
+| hybride modèle + motifs (graine 0) | **0,641** (HistGB ou GraphSAGE ; forêt 0,614) | **0,236** (forêt seule 0,191) | — |
 
 ## 5. Historique de ce qui a été fait
 
@@ -70,6 +70,9 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
      voisinage mesuré et affiché dans chaque explication GNN ;
    - **3** motifs : conversion des devises, 4 jours de contexte non étiqueté, filtre ACH,
      nouveau réglage sur la validation (HI 0,005 → 0,340, LI 0,001 → 0,147 sur le test) ;
+   - **J2 (28/10, après-midi)** : détecteur de relais (motif *stack*), calibration par tranche de score,
+     durée minimale des fans, exclusions ; tout choisi sur la validation : HI 0,503, LI 0,189 ;
+     hybrides jusqu'à 0,641 (HI) et 0,236 (LI) ;
    - **bug corrigé** : écart entraînement / notation sur les transactions de même minute (HistGB
      0,317 → 0,484 via `score()`), benchmark inchangé ;
    - **4** détecteur hybride, explication par lot (`amlgm explain --top`), validation Pydantic,
@@ -95,8 +98,10 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 
 ### Pistes techniques possibles (je peux les faire si vous le demandez)
 
-- [ ] J2 : détecteurs dédiés aux motifs *bipartite* et *stack* d'IBM (sans détecteur aujourd'hui).
-- [ ] Hybride sur LI-Small : empilement non linéaire ou par motif (aucun gain aujourd'hui).
+- [ ] Consolider J2 (marge faible : 0,503) : détecteur du motif *bipartite* (sans structure
+      exploitable aujourd'hui), meilleure couverture des gather-scatter (17 % trouvés par leur
+      propre détecteur).
+- [ ] Hybride sur LI-Small avec GraphSAGE (seul cas sans gain).
 - [ ] Hybride sur 3 graines (aujourd'hui une seule graine, modèles Kaggle seed 0).
 - [ ] Plugin Jupyter (affichage riche des alertes et explications dans un notebook).
 - [ ] Jeux *Medium* d'IBM (nécessitent le GPU Kaggle et plus de mémoire).

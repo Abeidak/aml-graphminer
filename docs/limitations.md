@@ -14,7 +14,9 @@ HI-Small validation slice: the IBM motifs change currency at almost every hop, s
 compared in US dollars (validation PR-AUC 0.053 → 0.054); they last 27–80 h, longer than the
 ≈ 51 h validation slice, so each slice is scanned with the 4 unlabelled days before it (→ 0.085);
 every laundering attempt annotated in the training slice is an ACH transfer, so the search is
-restricted to ACH (→ 0.162; the full retuning reaches 0.258). Before these changes the cycle
+restricted to ACH (→ 0.162; the full retuning reaches 0.258). The same full retuning over all
+payment formats stops at 0.164 on HI-Small and 0.029 on LI-Small (0.093 with ACH), which is why
+the restriction was kept. Before these changes the cycle
 detector recovered none of the annotated test cycles; it now recovers 81 % of them on HI-Small.
 The ACH restriction is a property of the IBM simulator, chosen on validation data: on other data,
 leave `transaction_types` empty or re-examine it. Only 62 % (HI) and 29 % (LI) of the laundering

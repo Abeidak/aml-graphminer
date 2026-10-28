@@ -122,7 +122,8 @@ LI-Small (meilleur 0,191) ; le jalon J2 (motifs > 0,5) n'est pas atteint (0,340 
 précédente 0,053 ; + conversion des devises 0,054 (les motifs IBM changent de devise à presque
 chaque saut, mais durent 27 à 80 h, davantage que la fenêtre de validation de ≈ 51 h) ;
 + contexte des 4 jours précédents 0,085 ; + restriction à l'ACH 0,162 ; + nouveau réglage complet
-0,258. Rappel « propre » des cycles sur le test : 0 → 0,81 ; scatter-gather : 0,02 → 0,85.
+0,258 (le même réglage sur tous les formats de paiement s'arrête à 0,164 ; LI-Small : 0,029 contre
+0,093 avec l'ACH). Rappel « propre » des cycles sur le test : 0 → 0,81 ; scatter-gather : 0,02 → 0,85.
 5.5 Rappel par motif du scanner (`per_pattern_recall.csv`) et comparaison supervisé /
 non supervisé (l'auto-encodeur est au niveau du hasard : il signale l'inhabituel, pas l'illicite).
 5.6 Détecteur hybride [H] (`benchmarks/results_parts/hybrid/README.md`, modèles Kaggle graine 0,

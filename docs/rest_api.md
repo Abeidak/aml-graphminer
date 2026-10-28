@@ -1,8 +1,8 @@
 # REST API
 
 `amlgm serve runs/hgb --port 8000` loads one saved detector and exposes it with FastAPI (`api`
-extra). Interactive documentation is generated at `/docs` (Swagger UI), `/redoc` and
-`/openapi.json` (OpenAPI 3.1); the web investigation interface is served at `/ui/` (see
+extra). Interactive documentation is generated at `/docs` (Swagger UI), `/redoc` (both load their
+scripts from a CDN, so they need Internet access) and `/openapi.json` (OpenAPI 3.1); the web investigation interface is served at `/ui/` (see
 {doc}`web_interface`). The logic lives in two framework-free classes —
 `aml_graphminer.api.service.ScoringService` (stateless scoring) and
 `aml_graphminer.api.investigation.InvestigationService` (investigations) — that can be embedded

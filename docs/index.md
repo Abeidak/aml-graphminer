@@ -21,7 +21,7 @@ amlgm serve --demo                             # web interface on a synthetic de
 amlgm generate data/ --accounts 1500           # synthetic IBM-AML-like data (no download needed)
 amlgm scan data/Synth-Small_Trans.csv --out alerts/
 amlgm train data/Synth-Small_Trans.csv --model hgb --out runs/hgb
-amlgm explain runs/hgb data/Synth-Small_Trans.csv --tx 1234 --plot why.png
+amlgm explain runs/hgb data/Synth-Small_Trans.csv --tx 1234 --plot why.png    # any tx_id, e.g. from alerts/alerts.csv
 ```
 
 ```{toctree}

@@ -38,3 +38,8 @@ neo4j-import/
 eda/
 alerts/
 *.egg-info/
+# outputs of the README / quick-start commands
+hub/
+why.png
+why.json
+amlgm.yaml

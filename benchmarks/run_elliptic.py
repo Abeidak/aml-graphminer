@@ -23,6 +23,7 @@ from run_ibm import environment  # same folder
 from aml_graphminer.config import load_config
 from aml_graphminer.evaluation.benchmark import GNN_KINDS
 from aml_graphminer.evaluation.elliptic import ELLIPTIC_MODELS, run_elliptic_benchmark
+from aml_graphminer.exceptions import IngestionError
 from aml_graphminer.ingestion import read_elliptic
 
 
@@ -46,7 +47,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         if args.data_dir is None:
             parser.error("--data-dir is required unless --synthetic is given")
-        data = read_elliptic(args.data_dir)
+        try:
+            data = read_elliptic(args.data_dir)
+        except IngestionError as exc:
+            parser.error(f"{exc} (download the Elliptic files first: amlgm download elliptic)")
         name = "elliptic"
     print(json.dumps(data.summary(), indent=2))
 

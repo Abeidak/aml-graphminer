@@ -51,13 +51,23 @@ FastAPI (api/app.py) ── InvestigationService (api/investigation.py, framewor
 ```
 
 The JSON API behind the interface is documented in {doc}`rest_api` (and interactively at
-`/docs`). Values coming from the data are always inserted as text in the page, never as HTML.
+`/docs`, whose Swagger UI scripts are loaded from a CDN: that page needs Internet access, the
+investigation interface itself does not). Values coming from the data are always inserted as text in the page, never as HTML.
 
 ## Limits
 
 * Analysed tables are kept in memory: at most 5 investigations of 2 million transactions each.
   For a whole IBM *Medium* or *Large* file use `amlgm score` / `amlgm scan` and load a time slice
-  in the interface.
+  in the interface. `amlgm serve` has no row-limit option: write the slice to a file first and
+  pass it with `--data`, for example the test period of HI-Small:
+
+  ```python
+  from aml_graphminer.evaluation import temporal_split
+  from aml_graphminer.ingestion import load_dataset
+
+  df = load_dataset("data/HI-Small_Trans.csv")
+  df[temporal_split(df)["test"]].to_csv("data/HI-Small-test_Trans.csv")
+  ```
 * There are no user accounts and no authentication: run it on your workstation (the default
   `127.0.0.1` binding) or behind an authenticating reverse proxy, and never expose real customer
   data on a public address.

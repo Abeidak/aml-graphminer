@@ -3,7 +3,7 @@
 #   pytest --cov=aml_graphminer --cov-config=.coveragerc-core
 #
 # The modules listed under `omit` cannot run without PyTorch / PyTorch Geometric / FastAPI; they
-# are measured by the full installation (CI job "test-gnn", 85 % gate in pyproject.toml).
+# are measured by the full installation (CI job "test-gnn", 90 % gate in pyproject.toml).
 [run]
 source = aml_graphminer
 branch = false

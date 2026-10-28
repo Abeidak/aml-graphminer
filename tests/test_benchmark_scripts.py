@@ -85,6 +85,12 @@ def test_run_ibm_requires_data_dir(scripts):
         scripts["run_ibm"].main(["--models", "rf"])
 
 
+def test_run_elliptic_reports_missing_files_cleanly(scripts, tmp_path, capsys):
+    with pytest.raises(SystemExit):
+        scripts["run_elliptic"].main(["--data-dir", str(tmp_path / "nowhere")])
+    assert "amlgm download elliptic" in capsys.readouterr().err
+
+
 def test_cell_formatting(scripts):
     cell = scripts["make_report"].cell
     assert cell(0.5, 0.125) == "0.500 ± 0.125"

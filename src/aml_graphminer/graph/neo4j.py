@@ -30,7 +30,7 @@ QUERIES_FILE = "queries.cypher"
 
 IMPORT_CYPHER = """// AML-GraphMiner -> Neo4j import (Neo4j 5.23 or newer).
 // 1. Copy accounts.csv and transactions.csv into the import directory of the database
-//    (docker compose --profile neo4j: the ./neo4j-import folder).
+//    (docker/docker-compose.neo4j.yml mounts the ./neo4j-import folder as /import).
 // 2. Run:  cypher-shell -u neo4j -p <password> -f import.cypher
 //    (in the Neo4j Browser, run each statement prefixed with :auto)
 CREATE CONSTRAINT account_id IF NOT EXISTS FOR (a:Account) REQUIRE a.id IS UNIQUE;

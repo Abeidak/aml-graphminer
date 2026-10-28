@@ -61,7 +61,8 @@ petit détecteur de démonstration). Ce que vous pouvez montrer au jury :
    contreparties, alertes, voisinage).
 5. **Charger un fichier…** : vos propres données (CSV/JSON/Parquet, format IBM ou canonique).
 6. **Exporter** les alertes ou les scores en CSV ; **À propos** → documentation interactive de
-   l'API (`/docs`, OpenAPI 3.1).
+   l'API (`/docs`, OpenAPI 3.1 ; cette page charge Swagger UI depuis Internet, l'interface
+   d'investigation fonctionne hors ligne).
 
 Arrêt du serveur : `Ctrl+C` dans PowerShell. Avec votre propre modèle :
 `amlgm serve runs\sage --data data\Synth-Small_Trans.csv`.
@@ -81,6 +82,8 @@ amlgm train    data\Synth-Small_Trans.csv --model gae  --out runs\gae  --epochs 
 amlgm score    runs\sage data\Synth-Small_Trans.csv --top 10
 amlgm explain  runs\sage data\Synth-Small_Trans.csv --tx 9000 --method captum --plot why.png
 amlgm explain  runs\sage data\Synth-Small_Trans.csv --tx 9000 --method gnnexplainer
+amlgm explain  runs\sage data\Synth-Small_Trans.csv --top 20 --out-dir dossier   # dossier des 20 meilleures alertes
+amlgm train    data\Synth-Small_Trans.csv --model hybrid --base runs\sage --out runs\hybrid   # modèle + motifs
 amlgm benchmark data\Synth-Small_Trans.csv --models patterns --models rf --models hgb --models gcn --models sage --models gat --models gae --seeds 0 --seeds 1 --out results
 amlgm export-neo4j data\Synth-Small_Trans.csv neo4j-import --model runs\sage
 amlgm export-hub runs\sage hub\sage --repo-id VOTRE_COMPTE_HF/aml-graphminer-sage
@@ -93,6 +96,11 @@ mesuré du voisinage** (score sans les transactions voisines). Sur les modèles 
 le modèle décide surtout à partir de la transaction et de ses deux comptes. Les masques nuls de
 PGExplainer sont alors la bonne réponse, et **Captum** (caractéristiques déterminantes) est la
 méthode la plus parlante.
+
+Le **détecteur hybride** (`--model hybrid --base <modèle sauvegardé>`) combine un modèle déjà
+entraîné et les motifs par une régression logistique apprise sur la validation ; il enregistre
+aussi les métriques de test du modèle seul et des motifs seuls, calculées sur les mêmes scores.
+Il fonctionne avec les modèles téléchargés de Kaggle (`runs\sage-HI-Small` …) sans réentraînement.
 
 ---
 
@@ -177,8 +185,14 @@ Puis <http://127.0.0.1:7474> et les requêtes de `neo4j-import\queries.cypher` (
    python benchmarks\run_elliptic.py --data-dir data\elliptic --models rf hgb --seeds 0 1 2 --out benchmarks\results
    python benchmarks\make_report.py benchmarks\results     # REPORT.md + results.tex (repris par le paper)
    ```
-   Les seuils des motifs de `configs\patterns.yaml` ont été réglés sur les tranches de
+   Les réglages des motifs de `configs\patterns.yaml` ont été choisis sur les tranches de
    validation de HI-Small et LI-Small (jamais sur le test) : passez `--config configs\patterns.yaml`.
+   Ils convertissent les montants en dollars, donnent au scanner les 4 jours précédant chaque
+   tranche (sans étiquettes) et limitent la recherche aux virements ACH : PR-AUC de test des
+   motifs 0,340 (HI-Small) et 0,147 (LI-Small), contre 0,005 et 0,001 auparavant ; objectif J2
+   (> 0,5) non atteint. Détecteur hybride sur les modèles Kaggle (sans réentraînement) :
+   `python benchmarks\run_hybrid.py benchmarks\results_parts\hybrid\hybrid.json HI-Small:rf,hgb,sage LI-Small:rf,hgb,sage`
+   (HI-Small : forêt aléatoire 0,519 → 0,562 ; aucun gain sur LI-Small).
 5. GNN sur GPU (sans VS Code, dans le navigateur) — **Kaggle**, recommandé car les fichiers IBM y
    sont déjà :
    1. `python -m build` → `dist\aml_graphminer-0.1.0-py3-none-any.whl` ;
@@ -249,3 +263,4 @@ Ces étapes nécessitent vos identifiants ou votre signature d'auteur ; tout le 
 | erreur MLflow avec `./mlruns` | le suivi utilise désormais `sqlite:///mlflow.db` ; visualisation : `mlflow ui --backend-store-uri sqlite:///mlflow.db` |
 | `Kaggle credentials not found` | placez `kaggle.json` dans `C:\Users\dell\.kaggle\` (section 7) |
 | interface : « exceed the limit » | l'interface garde au plus 2 millions de transactions en mémoire : chargez une tranche de dates, utilisez `amlgm score` pour un fichier entier |
+| `amlgm serve` n'a pas d'option `--nrows` | écrivez d'abord une tranche dans un fichier (ex. la période de test : `df[temporal_split(df)["test"]].to_csv("data/HI-Small-test_Trans.csv")`, voir `docs/web_interface.md`) puis `amlgm serve runs\sage-HI-Small --data data\HI-Small-test_Trans.csv` |

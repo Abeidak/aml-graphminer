@@ -19,7 +19,13 @@ AML and Elliptic datasets.
 > synthetic data (`--synthetic`) only check that the pipeline works, and
 > `make_report.py` labels them as such (folders whose name contains `smoke` are git-ignored).
 >
-> Measured costs on a 12-thread laptop CPU, 16 GB RAM (HI-Small, 3 seeds): motifs 4 min,
+> The motif rows use the configuration tuned on validation with currency conversion, a 4-day
+> unlabelled context before each slice and the ACH restriction (`configs/patterns.yaml`); they
+> take 27 s per file. Before these three changes the same scanner reached 0.005 (HI-Small) and
+> 0.001 (LI-Small).
+>
+> Measured costs on a 12-thread laptop CPU, 16 GB RAM (HI-Small, 3 seeds): motifs (without the
+> ACH restriction) 4 min,
 > HistGradientBoosting 5 min, random forest 99 min (peak 7.3 GiB), logistic regression 23 min
 > (lbfgs stops at `max_iter=500` without converging). `--nrows` takes the first lines of the
 > file, which is **not** sorted by time: on 500 000 lines the training split holds only 15

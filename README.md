@@ -28,7 +28,8 @@ with the **evaluation protocol built in**:
   their own evidence, plus **per-motif recall** on the IBM data;
 * **tabular baselines** (logistic regression, random forest, HistGradientBoosting, XGBoost),
   supervised **GCN / GraphSAGE / GAT** edge classifiers and an **unsupervised graph auto-encoder**
-  (no label needed) on the same features and split, with reproducible scores;
+  (no label needed) on the same features and split, with reproducible scores, and a **hybrid
+  detector** that stacks any of them with the motifs;
 * **explanations** for every alert: exact pattern evidence, model-agnostic occlusion,
   GNNExplainer, PGExplainer, Captum attributions and attention weights, each GNN explanation
   reporting the *measured* effect of the neighbourhood on the score (on the IBM AML models it is
@@ -64,7 +65,9 @@ amlgm eda    data/Synth-Small_Trans.csv --out eda/         # exploratory data an
 amlgm scan   data/Synth-Small_Trans.csv --out alerts/      # motif and community alerts with evidence
 amlgm train  data/Synth-Small_Trans.csv --model hgb --out runs/hgb
 amlgm train  data/Synth-Small_Trans.csv --model gae --out runs/gae --epochs 3   # unsupervised (gnn extra)
-amlgm explain runs/hgb data/Synth-Small_Trans.csv --tx 1234 --plot why.png
+amlgm explain runs/hgb data/Synth-Small_Trans.csv --tx 1234 --plot why.png    # any tx_id, e.g. from alerts/alerts.csv
+amlgm explain runs/hgb data/Synth-Small_Trans.csv --top 20 --out-dir case/   # case file of the top alerts
+amlgm train  data/Synth-Small_Trans.csv --model hybrid --base runs/hgb --out runs/hybrid   # model + motifs
 amlgm serve  runs/hgb --data data/Synth-Small_Trans.csv    # REST API + web interface on that file
 ```
 
@@ -115,12 +118,19 @@ GNNs on a Kaggle T4 GPU with notebook `04`; motif thresholds of
 | XGBoost | 0.474 ± 0.005 | 0.078 ± 0.007 |
 | GAT | 0.447 ± 0.007 | 0.110 ± 0.026 |
 | GCN | 0.374 ± 0.031 | 0.074 ± 0.024 |
+| structural motifs (no training) | 0.340 | 0.147 |
 | logistic regression | 0.294 | 0.032 |
-| structural motifs | 0.005 | 0.001 |
 | graph auto-encoder (no labels) | 0.003 ± 0.001 | 0.001 ± 0.000 |
 
 GPU results are merged with `python benchmarks/make_report.py benchmarks/results <part folders>`
-(see [`benchmarks/README.md`](benchmarks/README.md)).
+(see [`benchmarks/README.md`](benchmarks/README.md)). The motifs went from 0.005 / 0.001 to these
+values with currency conversion, a 4-day unlabelled context before each scanned slice and the ACH
+restriction chosen on validation ([`docs/patterns.md`](docs/patterns.md)).
+
+Hybrid detector (saved Kaggle model, seed 0, + motifs, stacked on validation; test PR-AUC,
+[`benchmarks/results_parts/hybrid`](benchmarks/results_parts/hybrid/README.md)): HI-Small random
+forest 0.519 → **0.562**, HistGradientBoosting 0.484 → 0.545, GraphSAGE 0.504 → 0.527; no gain on
+LI-Small (random forest 0.191 → 0.186).
 
 Elliptic Bitcoin (node classification, time steps 35–49 as test, prevalence 6.5 %, 3 seeds, Kaggle
 T4): HistGradientBoosting 0.790 ± 0.004, XGBoost 0.788 ± 0.002, random forest 0.786 ± 0.001,

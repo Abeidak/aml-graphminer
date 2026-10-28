@@ -71,6 +71,19 @@ IBM AML *LI-Small* and *HI-Small*).
   recall empty on real data; they now use `load_dataset`.
 - The CI core job referenced a missing `.coveragerc-core`; mypy errors with recent pandas stubs;
   non-writable NumPy arrays passed to PyTorch; deprecated licence metadata; Sphinx warnings.
+- **Train/serve skew on minute-resolution data**: `score()` (CLI `score`, REST API, web
+  interface, explanations) re-ordered transactions of the same timestamp by content, while the
+  training features were computed in file order; on IBM AML (99.7 % of the rows move) the saved
+  HistGradientBoosting model fell from a test PR-AUC of 0.484 to 0.317 when scored that way.
+  Ties are now ordered by `source_row` everywhere (`validate_transactions` and the context
+  stacking); scores still do not depend on the order rows are supplied, and the training
+  features of IBM files are unchanged (the benchmark numbers stay valid).
+- `PatternScanner.fit_calibration` counted the last transaction of the slice for alert
+  transactions absent from it (index `-1`).
+- `benchmarks/run_elliptic.py` printed a traceback when the data folder was missing; it now
+  prints a one-line error. Obsolete comments (`import.cypher`, `.coveragerc-core`), README
+  `--tx` example, `.gitignore` (`hub/`, `why.png`, `why.json`, `amlgm.yaml`); `/docs` needs
+  Internet (Swagger UI from a CDN) and `serve` takes a pre-cut slice file: documented.
 
 - Measured IBM AML HI-Small / LI-Small results of the CPU models (`benchmarks/results/`), EDA of
   both files (`results/eda-*`), motif thresholds tuned on the validation splits
@@ -84,11 +97,32 @@ IBM AML *LI-Small* and *HI-Small*).
   its pickle failed to load across platforms ("input stream corrupted", Linux -> Windows).
 - Notebook `04` runs in the browser on Kaggle or Colab: installs the package from an uploaded
   wheel, finds the IBM files of the Kaggle dataset, writes `results/<dataset>` for `make_report.py`.
+- **Currency conversion in the motif detectors** (`currency` section): amounts are compared in a
+  reference currency with exchange rates inferred from the cross-currency transactions
+  (`exchange_rates`, least squares over the exchanged pairs); IBM laundering chains change
+  currency between hops, which the amount checks could not follow.
+- **Unlabelled history for scanned slices** (`lookback`, `PatternScanner.scan(df, history=...)`):
+  the benchmark, `MotifDetector.fit` and `score` give the scanner the days before a slice, so a
+  motif straddling its start is seen whole; only the slice is scored.
+- `transaction_types` restricts the motif search to some payment formats (`[ACH]` in the tuned
+  IBM configuration, chosen on validation).
+- **Hybrid detector** (`HybridDetector`, `amlgm train --model hybrid --base DIR`, benchmark model
+  `hybrid-<model>`): a saved model stacked with the motif scanner by a logistic regression fitted
+  on the validation slice, with the test metrics of the model alone and of the motifs alone.
+- **Batch explanation of alerts**: `explain_alerts` and `amlgm explain --top K --out-dir DIR`
+  write a case file (one JSON + Markdown per alert, `index.csv`, `README.md`).
+- Pydantic validation wired in: every REST API record goes through the `Transaction` model, and
+  `load_dataset` spot-checks 1 000 rows (`check_sample`); errors name the transaction.
+- Property-based tests (Hypothesis) of the scanner, the cycle detector, the exchange-rate solver
+  and the graph converters; tests of `to_pyg_data`, `to_pyg_hetero` and the Polars reader (their
+  `pragma: no cover` exclusions are removed); the CI executes notebooks `01`–`03` with nbval.
 
 ### Known limitations
 
-- Even tuned, the motif scanner stays far below the learned models on IBM AML (test PR-AUC 0.005
-  on HI-Small; GraphSAGE 0.531, random forest 0.499); the unsupervised GAE is at chance level;
+- The motif scanner, tuned on validation with currency conversion, history context and the ACH
+  restriction, reaches a test PR-AUC of 0.340 (HI-Small) and 0.147 (LI-Small), below the 0.5
+  objective (it was 0.005 / 0.001); stacked with a model it lifts HI-Small (random forest 0.519 →
+  0.562, one seed) but not LI-Small; the unsupervised GAE is at chance level;
   on Elliptic the GNNs (best: GraphSAGE 0.497) stay well below the tree models (about 0.79).
 - GNN training needs `pyg-lib` or `torch-sparse` in addition to `pip install aml-graphminer[gnn]`.
 - The REST API has no authentication.

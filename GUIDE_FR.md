@@ -201,7 +201,7 @@ Ces étapes nécessitent vos identifiants ou votre signature d'auteur ; tout le 
 
 | livrable CDC | quoi faire |
 |---|---|
-| L1 — dépôt GitHub (MIT) | créer le dépôt public, remplacer `OWNER` partout (`Select-String -Path *.md,*.toml,*.cff,docs\*.md -Pattern OWNER`), renseigner auteurs / e-mails / ORCID dans `pyproject.toml` et `CITATION.cff`, `git init`, `git add .`, `git commit`, `git push` ; la CI démarre seule |
+| L1 — dépôt GitHub (MIT) | fait : https://github.com/Abeidak/aml-graphminer (privé). Reste : renseigner auteurs / e-mails / ORCID dans `pyproject.toml` et `CITATION.cff`, puis rendre le dépôt public (*Settings* → *Change visibility*) ; la CI démarre à chaque `git push` |
 | L2 — PyPI | créer le projet sur pypi.org, configurer le *trusted publishing* pour `.github/workflows/release.yml` (environnement `pypi`), puis `git tag v0.1.0 ; git push origin v0.1.0` |
 | L3 — API déployée | `docker build` puis déploiement de l'image (Render, Fly.io…) ; commande par défaut = démo publique |
 | L5 — ReadTheDocs | importer le dépôt sur readthedocs.org (`.readthedocs.yaml` fourni) |

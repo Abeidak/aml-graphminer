@@ -6,7 +6,7 @@ more than raw features.
 ## Set up
 
 ```bash
-git clone https://github.com/OWNER/aml-graphminer && cd aml-graphminer
+git clone https://github.com/Abeidak/aml-graphminer && cd aml-graphminer
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,viz]"            # add ",gnn" (+ the pyg-lib wheel, see docs) to work on the GNN code
 ```

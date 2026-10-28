@@ -5,7 +5,8 @@ CI and must be checked by a person.
 
 ## Once, before the first public release
 
-- [ ] ⚠ Replace every `OWNER` (`grep -rn OWNER .`) with the real GitHub organisation / user.
+- [x] ⚠ Replace every `OWNER` with the real GitHub user (`Abeidak`; repository
+      https://github.com/Abeidak/aml-graphminer, private until the release).
 - [ ] ⚠ `CITATION.cff` and `pyproject.toml`: real author names, e-mail addresses, ORCID iDs and
       the release date; remove the `TODO` markers.
 - [ ] ⚠ Confirm the licence of the generated documentation and of any text copied from the

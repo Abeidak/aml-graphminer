@@ -46,7 +46,7 @@ tags:
 # {title}
 
 Detector of suspicious financial transactions produced with
-[AML-GraphMiner](https://github.com/OWNER/aml-graphminer) v{config.get("library_version", __version__)}.
+[AML-GraphMiner](https://github.com/Abeidak/aml-graphminer) v{config.get("library_version", __version__)}.
 
 - **Model type**: `{model_type}` ({kind})
 - **Decision threshold** (F1-optimal on validation): `{threshold}`

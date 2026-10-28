@@ -84,9 +84,9 @@ docs = [
 amlgm = "aml_graphminer.cli:run"
 
 [project.urls]
-Homepage = "https://github.com/OWNER/aml-graphminer"
+Homepage = "https://github.com/Abeidak/aml-graphminer"
 Documentation = "https://aml-graphminer.readthedocs.io"
-Issues = "https://github.com/OWNER/aml-graphminer/issues"
+Issues = "https://github.com/Abeidak/aml-graphminer/issues"
 
 [tool.setuptools.dynamic]
 version = { attr = "aml_graphminer.__version__" }

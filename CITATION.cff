@@ -4,7 +4,7 @@ title: "AML-GraphMiner: an open-source toolkit for explainable money-laundering 
 version: 0.1.0
 date-released: 2026-10-07  # TODO: set the real release date
 license: MIT
-repository-code: "https://github.com/OWNER/aml-graphminer"
+repository-code: "https://github.com/Abeidak/aml-graphminer"
 abstract: >-
   AML-GraphMiner is a modular Python toolkit that ingests financial transactions,
   builds transaction graphs, detects classical laundering motifs (fan-in, fan-out,

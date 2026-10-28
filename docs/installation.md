@@ -75,7 +75,7 @@ select the same interpreter in your editor.
 ## From source
 
 ```bash
-git clone https://github.com/OWNER/aml-graphminer      # replace by the actual repository URL
+git clone https://github.com/Abeidak/aml-graphminer
 cd aml-graphminer
 pip install -e ".[dev,viz]"
 pytest

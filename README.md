@@ -5,7 +5,7 @@ communities, tabular baselines, supervised Graph Neural Networks (GCN, GraphSAGE
 unsupervised graph auto-encoder behind one Python SDK, a web investigation interface, a command
 line and a REST API.
 
-[![CI](https://github.com/OWNER/aml-graphminer/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/aml-graphminer/actions/workflows/ci.yml)
+[![CI](https://github.com/Abeidak/aml-graphminer/actions/workflows/ci.yml/badge.svg)](https://github.com/Abeidak/aml-graphminer/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 

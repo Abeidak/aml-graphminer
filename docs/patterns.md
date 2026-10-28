@@ -21,6 +21,7 @@ result.to_json("alerts.json")  # alerts + summary
 | `cycle` | money returns to its origin through 3–6 accounts, in time order, amounts almost conserved | `length, span_seconds, first_amount, last_amount, amount_retained, cycle` |
 | `scatter_gather` | source → *k* intermediaries → sink | `source, sink, n_intermediaries, span_seconds, dispersed_amount` |
 | `gather_scatter` | *k* sources → hub → *k′* targets with conserved volume | `hub, n_sources, n_targets, gathered_amount, scattered_amount, conservation_ratio` |
+| `relay` (opt-in) | an account forwards, within a few days, 0.9–1.2× what it has just received, in another currency (`A → B → C`; the IBM *stack* motif) | `relay, forwarded_share, delay_seconds, currency_in, currency_out` |
 | `community` | a small group organised around relay accounts that keeps most of its money inside within a few days (risk community, ring of mules) | `n_members, n_relays, n_internal_tx, internal_share, mean_flow_through, span_seconds, internal_amount, has_cycle` |
 
 Alert scores are in `[0, 1]` and grow with the strength of the evidence (more counterparties, a
@@ -86,13 +87,16 @@ Important parameters:
 
 ## Currencies, history and payment formats
 
-Three scanner-wide settings sit next to the detector sections:
+Scanner-wide settings sit next to the detector sections:
 
 ```yaml
 patterns:
   currency: {convert: true, reference: US Dollar, rates: null}
   lookback: 4d
   transaction_types: null        # e.g. [ACH]
+  exclude: []                    # self_transfers, same_bank, cross_currency
+  combine: max                   # or noisy_or
+  calibration_bins: 1            # > 1: precision per band of alert score
 ```
 
 * **`currency`** — laundering chains often change currency between hops: an account receives
@@ -116,14 +120,30 @@ patterns:
   score of 0). In the IBM AML simulator every laundering motif is made of ACH transfers
   (`docs/limitations.md`), which is why the tuned `configs/patterns.yaml` sets `[ACH]`; this is a
   property of that simulator, not a general rule, and should be re-examined on other data.
+* **`exclude`** — transactions left out of the search: transfers to oneself, between two
+  accounts of the same bank (internal transfers, a classic low-risk category), or paid in one
+  currency and received in another (never laundering in the IBM data — a simulator property).
+  Exchange rates are still inferred from the excluded cross-currency payments.
+* **`combine`** — the score of a transaction covered by several alerts: the strongest one
+  (`max`) or all of them as independent evidence (`noisy_or`, `1 − Π(1 − weight)`).
+
+Detector options added for the IBM data (all off by default): `fan_in` / `fan_out` take
+`min_span` (the fan must spread over at least this duration — IBM laundering fans last days,
+legitimate bursts such as payroll minutes) and `min_mean_amount` (in the reference currency);
+`gather_scatter` takes `scatter_lead` (the hub may pay out up to this long *before* it is paid,
+as it often does in the IBM data); the `relay` section is disabled unless `enabled: true`.
 
 ## Calibration
 
 Different detectors have different precision. `scanner.fit_calibration(validation_df)` learns,
 on a **labelled validation slice**, the Laplace-smoothed share of illicit transactions covered by
 each detector's alerts; calibrated scores (`precision × alert score`) can then be compared across
-detectors. `MotifDetector.fit` does this on the validation split automatically and selects the
-decision threshold there.
+detectors. With `calibration_bins: k > 1` the precision is learned per detector **and per band
+of alert score** (quantile bands of the validation alerts, shrunk towards the detector's own
+precision), because inside a detector the alert score does not always rank alerts well — on IBM
+HI-Small the best-scored fan-in alerts were the least precise. `MotifDetector.fit` does this on
+the validation split automatically and selects the decision threshold there; the bands are saved
+with the model.
 
 ## Using the scanner as a model
 

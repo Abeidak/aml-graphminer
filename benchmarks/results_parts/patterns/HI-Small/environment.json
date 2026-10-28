@@ -8,5 +8,5 @@
   "torch": "2.10.0+cpu",
   "torch_geometric": "2.8.1",
   "cuda": "False",
-  "wall_seconds": 349.4
+  "wall_seconds": 137.6
 }

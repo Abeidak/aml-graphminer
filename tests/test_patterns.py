@@ -245,7 +245,7 @@ def test_gather_scatter_requires_conserved_volume():
 def test_scanner_runs_all_detectors_and_scores_transactions(synth_df):
     scanner = PatternScanner()
     result = scanner.scan(synth_df)
-    assert set(result.timings) == set(DETECTOR_REGISTRY)
+    assert set(result.timings) == set(PatternConfig().enabled_names())  # relay is opt-in
     scores, _ = result.transaction_scores()
     assert scores.shape == (len(synth_df),) and ((scores >= 0) & (scores <= 1)).all()
     metrics = evaluate_scan(synth_df, result)
@@ -274,7 +274,7 @@ def test_calibration_scales_alert_scores(synth_df, synth_masks):
     scanner = PatternScanner()
     val = synth_df[synth_masks["val"]]
     calibration = scanner.fit_calibration(val)
-    assert set(calibration) == set(DETECTOR_REGISTRY)
+    assert set(calibration) == set(PatternConfig().enabled_names())
     assert all(0 < v <= 1 for v in calibration.values())
     result = scanner.scan(val)
     raw_max = max((a.score for a in result.alerts), default=0.0)
@@ -374,3 +374,123 @@ def test_scan_can_be_restricted_to_some_payment_formats():
     assert PatternConfig.from_dict({"lookback": None}).lookback is None
     with pytest.raises(ConfigError):
         PatternConfig.from_dict({"lookback": "soon"})
+
+
+def test_fan_minimum_span_and_amount_skip_quick_small_bursts():
+    t0 = 3 * 24 * 60
+    burst = [(t0 + i, f"src{i}", "payroll", 300.0) for i in range(8)]  # 8 payments in 8 minutes
+    slow = labelled([(t0 + 600 * i, f"m{i}", "collector", 9_000.0) for i in range(6)], "fan_in")
+    df = make_tx(background() + burst + slow)
+    wide = PatternConfig.from_dict({"fan_in": {"window": "72h", "min_burst_ratio": 0}}).fan_in
+    hubs = {a.evidence["hub"] for a in scan_one(FanInDetector(wide), df)}
+    assert {"payroll", "collector"} <= hubs
+    cfg = PatternConfig.from_dict(
+        {
+            "fan_in": {
+                "window": "72h",
+                "min_span": "24h",
+                "min_mean_amount": 5000,
+                "min_burst_ratio": 0,
+            }
+        }
+    ).fan_in
+    hubs = {a.evidence["hub"] for a in scan_one(FanInDetector(cfg), df)}
+    assert hubs == {"collector"}
+    with pytest.raises(ConfigError):
+        PatternConfig.from_dict({"fan_in": {"min_span": "later"}})
+
+
+def test_gather_scatter_may_pay_out_before_it_is_paid():
+    t0 = 3000
+    rows = [(t0 - 300 + 8 * i, "hub", f"t{i}", 1_950.0) for i in range(3)] + [
+        (t0 + 8 * i, f"s{i}", "hub", 2_000.0) for i in range(3)
+    ]
+    df = make_tx(background() + labelled(rows, "gather_scatter"))
+    assert covered(scan_one(GatherScatterDetector(), df), df, "gather_scatter") < 1.0
+    cfg = PatternConfig.from_dict({"gather_scatter": {"scatter_lead": "12h"}}).gather_scatter
+    assert covered(scan_one(GatherScatterDetector(cfg), df), df, "gather_scatter") == 1.0
+
+
+def test_scanner_exclusions_keep_rates_and_skip_internal_transfers():
+    rows = [(0, "A", "B", 5000.0), (60, "B", "C", 4900.0), (120, "C", "A", 4800.0)]
+    df = make_tx(rows + [(500, "X", "Y", 1000.0)])
+    df.loc[1, ["currency", "currency_received", "amount", "amount_received"]] = [
+        "Euro",
+        "Euro",
+        4900.0 * 0.85,
+        4900.0 * 0.85,
+    ]
+    df.loc[3, ["currency_received", "amount_received"]] = ["Euro", 850.0]  # reveals the rate
+    cfg = PatternConfig.from_dict({"exclude": ["cross_currency", "self_transfers"]})
+    # the only cross-currency row is excluded, yet its rate still converts the euro hop
+    assert len(PatternScanner(cfg, only=["cycle"]).scan(df).alerts) == 1
+    df.loc[:2, ["sender_bank", "receiver_bank"]] = "001"
+    same_bank = PatternConfig.from_dict({"exclude": ["same_bank"]})
+    assert PatternScanner(same_bank, only=["cycle"]).scan(df).alerts == []
+    with pytest.raises(ConfigError):
+        PatternConfig.from_dict({"exclude": ["weekends"]})
+
+
+def test_noisy_or_combines_the_alerts_of_a_transaction():
+    from aml_graphminer.detectors.patterns.base import Alert
+    from aml_graphminer.detectors.patterns.scanner import ScanResult
+
+    ts = pd.Timestamp("2022-09-01")
+    alerts = [Alert("a", 0.5, ["x"], [1, 2], ts, ts, 1.0), Alert("b", 0.5, ["x"], [2], ts, ts, 1.0)]
+    best, _ = ScanResult(alerts, np.array([1, 2, 3])).transaction_scores()
+    both, _ = ScanResult(alerts, np.array([1, 2, 3]), combine="noisy_or").transaction_scores()
+    assert best.tolist() == [0.5, 0.5, 0.0]
+    assert both == pytest.approx([0.5, 0.75, 0.0])
+
+
+def test_calibration_by_score_bands_reorders_alerts_and_survives_saving(synth_df, tmp_path):
+    from aml_graphminer.detectors.bundle import MotifDetector, load_detector
+
+    one = PatternScanner()
+    one.fit_calibration(synth_df)
+    assert one.bin_calibration == {}
+    cfg = PatternConfig.from_dict({"calibration_bins": 3})
+    banded = PatternScanner(cfg)
+    banded.fit_calibration(synth_df)
+    assert banded.bin_calibration  # at least one detector has enough alerts for 3 bands
+    for edges, precision in banded.bin_calibration.values():
+        assert len(precision) == len(edges) + 1 and all(0 < p < 1 for p in precision)
+        assert edges == sorted(edges)
+    result = banded.scan(synth_df)
+    for alert in result.alerts[:50]:
+        if alert.pattern in result.bins:
+            edges, precision = result.bins[alert.pattern]
+            assert result.weight(alert) <= max(precision)
+    det = MotifDetector.fit(synth_df, cfg)
+    det.save(tmp_path / "m")
+    again = load_detector(tmp_path / "m")
+    assert again.scanner.bin_calibration == det.scanner.bin_calibration
+    assert np.allclose(again.score(synth_df.iloc[:500]), det.score(synth_df.iloc[:500]))
+    with pytest.raises(ConfigError):
+        PatternConfig.from_dict({"calibration_bins": 0})
+
+
+def test_relay_finds_money_forwarded_in_another_currency():
+    from aml_graphminer.detectors.patterns import RelayDetector
+
+    rows = [
+        (0, "A", "B", 5000.0, 1.0, "stack"),
+        (600, "B", "C", 4850.0 * 0.85, 1.0, "stack"),  # 97 % forwarded, in euros, 10 h later
+        (700, "X", "Y", 1000.0),  # reveals the dollar / euro rate
+        (900, "D", "E", 3000.0),
+        (950, "E", "F", 1000.0),  # forwards a third only: not a relay
+    ]
+    df = make_tx(background(200) + rows)
+    n = len(df)
+    euro = df.index[(df["sender"] == "B") & (df["receiver"] == "C")]
+    df.loc[euro, ["currency", "currency_received"]] = "Euro"
+    fx = df.index[(df["sender"] == "X")]
+    df.loc[fx, ["currency_received", "amount_received"]] = ["Euro", 850.0]
+    assert len(df) == n
+    cfg = PatternConfig.from_dict({"relay": {"enabled": True}}).relay
+    alerts = RelayDetector(cfg).detect_frame(df)
+    assert len(alerts) == 1 and alerts[0].accounts == ["A", "B", "C"]
+    assert alerts[0].evidence["forwarded_share"] == pytest.approx(0.97)
+    same = PatternConfig.from_dict({"relay": {"enabled": True, "currency_change": False}}).relay
+    assert len(RelayDetector(same).detect_frame(df)) >= 1
+    assert RelayDetector().detect_frame(df) == []  # opt-in

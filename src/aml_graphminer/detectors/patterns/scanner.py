@@ -19,6 +19,7 @@ from .config import PatternConfig
 from .cycles import CycleDetector
 from .fan import FanInDetector, FanOutDetector
 from .layering import GatherScatterDetector, ScatterGatherDetector
+from .relay import RelayDetector
 from .smurfing import SmurfingDetector
 
 DetectorFactory = Callable[[PatternConfig], PatternDetector]
@@ -31,6 +32,7 @@ DETECTOR_REGISTRY: dict[str, DetectorFactory] = {
     "scatter_gather": lambda c: ScatterGatherDetector(c.scatter_gather),
     "gather_scatter": lambda c: GatherScatterDetector(c.gather_scatter),
     "community": lambda c: CommunityDetector(c.community),
+    "relay": lambda c: RelayDetector(c.relay),
 }
 
 
@@ -66,12 +68,23 @@ class ScanResult:
     tx_ids: np.ndarray
     timings: dict[str, float] = field(default_factory=dict)
     calibration: dict[str, float] = field(default_factory=dict)
+    combine: str = "max"  # "max" or "noisy_or" (PatternConfig.combine)
+    # per-pattern (inner bin edges of the alert score, precision of each bin)
+    bins: dict[str, tuple[list[float], list[float]]] = field(default_factory=dict)
 
     def __len__(self) -> int:
         return len(self.alerts)
 
     def weight(self, alert: Alert) -> float:
-        """Alert score after the optional per-pattern precision calibration."""
+        """Alert score after the optional precision calibration (per pattern or per score bin).
+
+        With score bins the weight is the precision of the alert's bin (the score only breaks
+        ties inside a bin).
+        """
+        if alert.pattern in self.bins:
+            edges, precision = self.bins[alert.pattern]
+            k = int(np.searchsorted(edges, alert.score, side="right"))
+            return float(precision[k]) * (1.0 - 1e-3 + 1e-3 * alert.score)
         return alert.score * self.calibration.get(alert.pattern, 1.0)
 
     def to_frame(self) -> pd.DataFrame:
@@ -109,10 +122,12 @@ class ScanResult:
         """Per-transaction score (max over alerts) and name of the strongest pattern.
 
         Returns ``(scores, top_pattern)`` aligned with the scanned frame; transactions covered
-        by no alert get score ``0`` and pattern ``""``.
+        by no alert get score ``0`` and pattern ``""``. With ``combine="noisy_or"`` the alerts
+        of a transaction are independent pieces of evidence: ``1 - prod(1 - weight)``.
         """
         n = len(self.tx_ids)
         scores = np.zeros(n)
+        miss = np.zeros(n)  # sum of log(1 - weight), for noisy-or
         top = np.full(n, "", dtype=object)
         index = pd.Index(self.tx_ids)
         for alert in self.alerts:
@@ -122,6 +137,10 @@ class ScanResult:
             better = scores[pos] < w
             scores[pos[better]] = w
             top[pos[better]] = alert.pattern
+            if self.combine == "noisy_or":
+                np.add.at(miss, np.unique(pos), np.log1p(-min(w, 1.0 - 1e-12)))
+        if self.combine == "noisy_or":
+            scores = -np.expm1(miss)
         return scores, top
 
     def account_scores(self) -> dict[str, float]:
@@ -190,6 +209,7 @@ class PatternScanner:
             if getattr(getattr(self.config, n, None), "enabled", True)
         }
         self.calibration: dict[str, float] = {}
+        self.bin_calibration: dict[str, tuple[list[float], list[float]]] = {}
 
     def scan(self, df: pd.DataFrame, history: pd.DataFrame | None = None) -> ScanResult:
         """Run all detectors on a canonical, time-sorted transaction table.
@@ -202,10 +222,14 @@ class PatternScanner:
         if history is not None and len(history):
             earlier = history[~history.index.isin(df.index)]
             frame = pd.concat([earlier, df]).sort_values("timestamp", kind="stable")
-        types = self.config.transaction_types
-        if types is not None and "transaction_type" in frame.columns:
-            frame = frame[frame["transaction_type"].isin(types)]
-        ctx = TxArrays.from_frame(frame, self.config.currency)
+        currency = self.config.currency
+        kept = self._kept(frame)
+        if not kept.all():
+            if currency.convert and currency.rates is None:
+                # rates come from the cross-currency transactions, which may be excluded below
+                currency = currency.model_copy(update={"rates": self._rates(frame)})
+            frame = frame[kept]
+        ctx = TxArrays.from_frame(frame, currency)
         alerts: list[Alert] = []
         timings: dict[str, float] = {}
         for name, detector in self.detectors.items():
@@ -215,7 +239,38 @@ class PatternScanner:
         if history is not None and len(history):
             own = pd.Index(df.index)
             alerts = [a for a in alerts if (own.get_indexer(a.tx_ids) >= 0).any()]
-        return ScanResult(alerts, df.index.to_numpy(), timings, dict(self.calibration))
+        return ScanResult(
+            alerts,
+            df.index.to_numpy(),
+            timings,
+            dict(self.calibration),
+            self.config.combine,
+            dict(self.bin_calibration),
+        )
+
+    def _kept(self, frame: pd.DataFrame) -> np.ndarray:
+        """Rows searched for motifs (``transaction_types`` and ``exclude`` settings)."""
+        keep = np.ones(len(frame), dtype=bool)
+        cfg = self.config
+        if cfg.transaction_types is not None and "transaction_type" in frame.columns:
+            keep &= frame["transaction_type"].isin(cfg.transaction_types).to_numpy()
+        if "self_transfers" in cfg.exclude:
+            keep &= (frame["sender"] != frame["receiver"]).to_numpy()
+        if "same_bank" in cfg.exclude and "sender_bank" in frame.columns:
+            bank = frame["sender_bank"].astype(str)
+            keep &= ~((bank == frame["receiver_bank"].astype(str)) & (bank != "")).to_numpy()
+        if "cross_currency" in cfg.exclude:
+            keep &= (frame["currency"] == frame["currency_received"]).to_numpy()
+        return keep
+
+    def _rates(self, frame: pd.DataFrame) -> dict[str, float]:
+        """Exchange rates inferred from all the transactions of ``frame`` (before filtering)."""
+        ctx = TxArrays.from_frame(frame, self.config.currency)
+        return {
+            str(name): float(rate)
+            for name, rate in zip(ctx.currency_names, ctx.fx)
+            if np.isfinite(rate)
+        }
 
     def fit_calibration(
         self, df: pd.DataFrame, prior: float = 1.0, history: pd.DataFrame | None = None
@@ -229,8 +284,13 @@ class PatternScanner:
         """
         if df["label"].isna().all():
             raise ConfigError("calibration needs labelled transactions")
-        result = self.scan(df, history)
-        labels = df["label"].fillna(0).to_numpy()
+        return self.calibrate(self.scan(df, history), df["label"].fillna(0).to_numpy(), prior)
+
+    def calibrate(
+        self, result: ScanResult, labels: np.ndarray, prior: float = 1.0
+    ) -> dict[str, float]:
+        """Calibration from an existing scan of a labelled slice (``labels`` aligned with it)."""
+        labels = np.asarray(labels, dtype="float64")
         index = pd.Index(result.tx_ids)
         by_pattern: dict[str, set[int]] = {}
         for alert in result.alerts:
@@ -241,4 +301,34 @@ class PatternScanner:
             covered = np.array(sorted(by_pattern.get(name, set())), dtype=int)
             positives = float(labels[covered].sum()) if len(covered) else 0.0
             self.calibration[name] = (positives + prior) / (len(covered) + 2.0 * prior)
+        self.bin_calibration = self._fit_bins(result, labels, index)
         return dict(self.calibration)
+
+    def _fit_bins(
+        self, result: ScanResult, labels: np.ndarray, index: pd.Index, shrink: float = 20.0
+    ) -> dict[str, tuple[list[float], list[float]]]:
+        """Precision per quantile band of the alert score, shrunk towards the detector's own."""
+        k = self.config.calibration_bins
+        if k <= 1:
+            return {}
+        out: dict[str, tuple[list[float], list[float]]] = {}
+        for name in self.detectors:
+            alerts = [a for a in result.alerts if a.pattern == name]
+            if len(alerts) < 2 * k:
+                continue
+            scores = np.array([a.score for a in alerts])
+            edges = np.unique(np.quantile(scores, np.linspace(0, 1, k + 1)[1:-1]))
+            band = np.searchsorted(edges, scores, side="right")
+            base = self.calibration[name]
+            precision = []
+            for b in range(len(edges) + 1):
+                rows: set[int] = set()
+                for alert, a_band in zip(alerts, band):
+                    if a_band == b:
+                        pos = index.get_indexer(pd.Index(alert.tx_ids))
+                        rows.update(pos[pos >= 0].tolist())
+                covered = np.fromiter(rows, dtype=int, count=len(rows))
+                hits = float(labels[covered].sum()) if len(covered) else 0.0
+                precision.append((hits + shrink * base) / (len(covered) + shrink))
+            out[name] = ([float(e) for e in edges], precision)
+        return out

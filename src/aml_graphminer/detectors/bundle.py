@@ -135,6 +135,9 @@ class MotifDetector:
                 "model_type": self.model_type,
                 "patterns": self.scanner.config.model_dump(),
                 "calibration": self.scanner.calibration,
+                "calibration_bins": {
+                    k: [list(e), list(p)] for k, (e, p) in self.scanner.bin_calibration.items()
+                },
                 "threshold": self.threshold,
                 "metrics": self.metrics,
             },
@@ -144,6 +147,10 @@ class MotifDetector:
     def _from_payload(cls, payload: dict[str, Any]) -> MotifDetector:
         scanner = PatternScanner(PatternConfig.from_dict(payload.get("patterns")))
         scanner.calibration = {k: float(v) for k, v in payload.get("calibration", {}).items()}
+        scanner.bin_calibration = {
+            k: ([float(x) for x in e], [float(x) for x in p])
+            for k, (e, p) in payload.get("calibration_bins", {}).items()
+        }
         return cls(scanner, float(payload.get("threshold", 0.5)), payload.get("metrics", {}))
 
     def describe(self) -> dict[str, Any]:

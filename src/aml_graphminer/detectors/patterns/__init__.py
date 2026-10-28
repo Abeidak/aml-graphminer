@@ -1,4 +1,4 @@
-"""Deterministic detectors: fan-in/out, smurfing, cycles, (gather|scatter), risk communities."""
+"""Deterministic detectors: fan-in/out, smurfing, cycles, (gather|scatter), relays, risk communities."""
 
 from .base import (
     Alert,
@@ -16,6 +16,7 @@ from .config import (
     FanConfig,
     GatherScatterConfig,
     PatternConfig,
+    RelayConfig,
     ScatterGatherConfig,
     SmurfingConfig,
 )
@@ -23,6 +24,7 @@ from .cycles import CycleDetector
 from .evaluation import alert_precision_table, evaluate_scan, pattern_recall_table
 from .fan import FanInDetector, FanOutDetector
 from .layering import GatherScatterDetector, ScatterGatherDetector
+from .relay import RelayDetector
 from .scanner import (
     DETECTOR_REGISTRY,
     PatternScanner,
@@ -48,6 +50,8 @@ __all__ = [
     "PatternConfig",
     "PatternDetector",
     "PatternScanner",
+    "RelayConfig",
+    "RelayDetector",
     "ScanResult",
     "ScatterGatherConfig",
     "ScatterGatherDetector",

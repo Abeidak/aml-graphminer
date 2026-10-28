@@ -117,6 +117,7 @@ class GatherScatterDetector(PatternDetector):
         if not cfg.enabled or len(ctx) == 0:
             return []
         w_in, w_out = parse_duration(cfg.gather_window), parse_duration(cfg.scatter_window)
+        lead = None if cfg.scatter_lead is None else parse_duration(cfg.scatter_lead)
         horizon = max(float(ctx.ts.max() - ctx.ts.min()), w_in * max(cfg.min_burst_ratio, 1.0))
         uniq_in = _distinct_per_node(ctx.dst, ctx.src, ctx.n_nodes)
         uniq_out = _distinct_per_node(ctx.src, ctx.dst, ctx.n_nodes)
@@ -136,7 +137,11 @@ class GatherScatterDetector(PatternDetector):
             ):
                 gather = in_rows[i:j]
                 t_first, t_last = float(ctx.ts[gather].min()), float(ctx.ts[gather].max())
-                lo = int(np.searchsorted(out_ts, t_first, side="right"))
+                lo = (
+                    int(np.searchsorted(out_ts, t_first, side="right"))
+                    if lead is None
+                    else int(np.searchsorted(out_ts, t_first - lead, side="left"))
+                )
                 hi = int(np.searchsorted(out_ts, t_last + w_out, side="right"))
                 scatter = out_rows[lo:hi]
                 if len(scatter) == 0:

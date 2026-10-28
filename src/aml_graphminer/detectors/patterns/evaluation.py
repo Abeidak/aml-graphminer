@@ -22,11 +22,16 @@ def evaluate_scan(df: pd.DataFrame, result: ScanResult) -> dict[str, Any]:
     return compute_metrics(y, scores, threshold=np.finfo(float).tiny)
 
 
+# detector aimed at an IBM ground-truth motif when the names differ
+DETECTOR_FOR_MOTIF: dict[str, str] = {"stack": "relay"}
+
+
 def pattern_recall_table(df: pd.DataFrame, result: ScanResult) -> pd.DataFrame:
     """Per ground-truth motif: how many of its transactions are covered by an alert?
 
     ``recall_any`` counts coverage by *any* alert, ``recall_same`` only by an alert of the
-    same detector (e.g. true ``fan_in`` covered by the ``fan_in`` detector).
+    detector aimed at that motif (e.g. true ``fan_in`` covered by the ``fan_in`` detector, true
+    ``stack`` by the ``relay`` detector, see ``DETECTOR_FOR_MOTIF``).
     """
     if "pattern" not in df.columns:
         raise ValueError("the table has no 'pattern' column")
@@ -42,7 +47,8 @@ def pattern_recall_table(df: pd.DataFrame, result: ScanResult) -> pd.DataFrame:
     rows = []
     for name, group in df[df["pattern"] != ""].groupby("pattern"):
         pos = index.get_indexer(group.index)
-        same = covered_by.get(str(name), np.zeros(len(df), dtype=bool))
+        detector = DETECTOR_FOR_MOTIF.get(str(name), str(name))
+        same = covered_by.get(detector, np.zeros(len(df), dtype=bool))
         rows.append(
             {
                 "pattern": name,

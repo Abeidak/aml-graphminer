@@ -76,6 +76,8 @@ The modules named after the project specification (`csv_adapter`, `ibm_adapter`,
    :members:
 .. automodule:: aml_graphminer.detectors.patterns.evaluation
    :members:
+.. automodule:: aml_graphminer.detectors.patterns.relay
+   :members:
 .. automodule:: aml_graphminer.detectors.baselines
    :members:
 .. automodule:: aml_graphminer.detectors.bundle

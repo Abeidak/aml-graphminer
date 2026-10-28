@@ -29,6 +29,7 @@ class _FanDetector(PatternDetector):
             return []
         hub, other = self._keys(ctx)
         window = parse_duration(cfg.window)
+        min_span = 0.0 if cfg.min_span is None else parse_duration(cfg.min_span)
         horizon = max(float(ctx.ts.max() - ctx.ts.min()), window * max(cfg.min_burst_ratio, 1.0))
         # cheap vectorised prefilter: a hub needs >= k transactions inside one window
         in_window = trailing_window_stats(hub, ctx.ts, np.ones(len(ctx)), window).count
@@ -37,12 +38,22 @@ class _FanDetector(PatternDetector):
         for key, rows in group_slices(hub, candidates):
             expected = len(rows) * window / horizon  # tx per window if the hub were stationary
             need = int(np.ceil(cfg.min_burst_ratio * expected))
+            ts_rows, amount_rows = ctx.ts[rows], ctx.paid_c[rows]
+
+            def accept(
+                i: int, j: int, ts: np.ndarray = ts_rows, amt: np.ndarray = amount_rows
+            ) -> bool:
+                return bool(
+                    ts[j - 1] - ts[i] >= min_span and amt[i:j].mean() >= cfg.min_mean_amount
+                )
+
             for i, j in sliding_windows(
-                ctx.ts[rows],
+                ts_rows,
                 other[rows],
                 window,
                 min_distinct=cfg.min_counterparties,
                 min_count=need,
+                accept=accept if (min_span > 0 or cfg.min_mean_amount > 0) else None,
             ):
                 sel = rows[i:j]
                 amount = ctx.paid_c[sel]

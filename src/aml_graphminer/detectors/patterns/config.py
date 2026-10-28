@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -36,8 +36,18 @@ class FanConfig(_Section):
     # The burst must be at least this many times the hub's own average rate, otherwise busy
     # merchants / payment hubs would be flagged all the time.
     min_burst_ratio: float = Field(default=3.0, ge=0)
+    # The transactions must spread over at least this duration (None: no minimum): laundering
+    # fans of the IBM simulator last days, legitimate bursts (payroll, batch payments) minutes.
+    min_span: str | None = None
+    # Minimum mean amount of the fan's transactions, in the reference currency.
+    min_mean_amount: float = Field(default=0.0, ge=0)
 
     _w = field_validator("window")(_check_duration)
+
+    @field_validator("min_span")
+    @classmethod
+    def _check_min_span(cls, value: str | None) -> str | None:
+        return None if value is None else _check_duration(value)
 
 
 class SmurfingConfig(_Section):
@@ -103,8 +113,30 @@ class GatherScatterConfig(_Section):
     min_burst_ratio: float = Field(default=3.0, ge=0)
     # share of the hub's payments during the episode that belong to the gather/scatter pattern
     min_activity_share: float = Field(default=0.5, ge=0, le=1)
+    # The hub may start paying out up to this long before the gathering starts (None: the scatter
+    # follows the first inflow). In the IBM data the hub often pays out before it is paid.
+    scatter_lead: str | None = None
 
     _w = field_validator("gather_window", "scatter_window")(_check_duration)
+
+    @field_validator("scatter_lead")
+    @classmethod
+    def _check_lead(cls, value: str | None) -> str | None:
+        return None if value is None else _check_duration(value)
+
+
+class RelayConfig(_Section):
+    """``A -> B -> C``: an account forwards almost what it has just received (IBM "stack")."""
+
+    # opt-in: on ordinary data many legitimate accounts pass money on
+    enabled: bool = False
+    hop_window: str = "36h"
+    min_hop_ratio: float = Field(default=0.9, gt=0, le=1)
+    max_hop_ratio: float = Field(default=1.0, ge=1)
+    max_degree: int = Field(default=50, ge=2)
+    currency_change: bool = True
+
+    _w = field_validator("hop_window")(_check_duration)
 
 
 class CommunityConfig(_Section):
@@ -159,6 +191,7 @@ class PatternConfig(BaseModel):
     scatter_gather: ScatterGatherConfig = ScatterGatherConfig()
     gather_scatter: GatherScatterConfig = GatherScatterConfig()
     community: CommunityConfig = CommunityConfig()
+    relay: RelayConfig = RelayConfig()
     currency: CurrencyConfig = CurrencyConfig()
     # When a time slice is scanned (benchmark validation / test), the transactions of this
     # period before it are given as unlabelled context so that motifs straddling the start of
@@ -167,6 +200,18 @@ class PatternConfig(BaseModel):
     # Only transactions of these payment formats are searched for motifs (None: all). In the
     # IBM AML simulator every laundering motif is made of ACH transfers; elsewhere leave None.
     transaction_types: list[str] | None = None
+    # Transactions left out of the search: transfers to oneself, between two accounts of the same
+    # bank, or paid in one currency and received in another (never laundering in the IBM data).
+    exclude: list[Literal["self_transfers", "same_bank", "cross_currency"]] = Field(
+        default_factory=list
+    )
+    # How the alerts covering a transaction are combined into its score: the strongest one
+    # ("max") or all of them as independent evidence ("noisy_or": 1 - prod(1 - weight)).
+    combine: Literal["max", "noisy_or"] = "max"
+    # Calibration (fit_calibration) learns one precision per detector, or one per band of alert
+    # score when > 1 (quantile bands of the validation alerts, shrunk towards the detector's
+    # precision): inside a detector, the alert score does not always rank alerts well.
+    calibration_bins: int = Field(default=1, ge=1, le=20)
 
     @field_validator("lookback")
     @classmethod

@@ -5,25 +5,34 @@ real laundering, and the labels are exact, which real labels never are (real lab
 investigated cases and are biased towards what past systems flagged). Elliptic is a Bitcoin graph
 with anonymised features; conclusions do not transfer automatically to bank data.
 
-**Detectors.** The motif settings of `configs/patterns.yaml` were tuned on the validation
-splits of IBM AML HI-Small and LI-Small (the package defaults were chosen for the synthetic
-generator). The tuned scanner reaches a test PR-AUC of 0.340 (HI-Small) and 0.147 (LI-Small),
-without any training (`benchmarks/results/REPORT.md`), still below the objective of 0.5 and below
-the best learned models on HI-Small. Three changes made this possible, each measured on the
-HI-Small validation slice: the IBM motifs change currency at almost every hop, so amounts are now
-compared in US dollars (validation PR-AUC 0.053 → 0.054); they last 27–80 h, longer than the
-≈ 51 h validation slice, so each slice is scanned with the 4 unlabelled days before it (→ 0.085);
-every laundering attempt annotated in the training slice is an ACH transfer, so the search is
-restricted to ACH (→ 0.162; the full retuning reaches 0.258). The same full retuning over all
-payment formats stops at 0.164 on HI-Small and 0.029 on LI-Small (0.093 with ACH), which is why
-the restriction was kept. Before these changes the cycle
-detector recovered none of the annotated test cycles; it now recovers 81 % of them on HI-Small.
-The ACH restriction is a property of the IBM simulator, chosen on validation data: on other data,
-leave `transaction_types` empty or re-examine it. Only 62 % (HI) and 29 % (LI) of the laundering
-transactions belong to an annotated motif, and bipartite / stack / random motifs have no dedicated
-detector. The hybrid detector (model + motifs) improves the HI-Small test PR-AUC of the random
-forest, HistGradientBoosting and GraphSAGE models (0.519 → 0.562, 0.484 → 0.545, 0.504 → 0.527;
-one seed) but not on LI-Small (`benchmarks/results_parts/hybrid/README.md`).
+**Detectors.** Every setting of `configs/patterns.yaml` was chosen on the validation splits of
+IBM AML HI-Small and LI-Small (the package defaults were chosen for the synthetic generator). The
+tuned scanner reaches a test PR-AUC of **0.503** on HI-Small (95 % bootstrap interval 0.479–0.526)
+and 0.189 on LI-Small, without any learned model (`benchmarks/results/REPORT.md`): the objective
+of 0.5 is reached, narrowly. It was 0.005 / 0.001 with the original detectors. The steps, each
+measured on the HI-Small validation slice: the IBM motifs change currency at almost every hop, so
+amounts are compared in US dollars (validation PR-AUC 0.053 → 0.054); they last 27–80 h, longer
+than the ≈ 51 h validation slice, so each slice is scanned with the 4 unlabelled days before it
+(→ 0.085); every laundering attempt annotated in the training slice is an ACH transfer, so the
+search is restricted to ACH (→ 0.162, full retuning 0.258; the same retuning over all payment
+formats stops at 0.164, and at 0.029 instead of 0.093 on LI-Small); fans must spread over at
+least a day with a mean amount of 5 000 USD and internal / cross-currency payments are excluded
+(→ 0.288). The last two steps were judged out of sample, calibrating on one half of the
+validation slice and measuring on the other: a precision per band of alert score instead of one
+per detector (0.177 → 0.281) and the `relay` detector for the IBM *stack* motif (→ 0.387). The
+test slice was only used to report the results (three times along the way: 0.340, 0.399, 0.503),
+never to choose a setting.
+
+Three caveats. The ACH restriction and the cross-currency exclusion are properties of the IBM
+simulator chosen on its validation data — on other data, leave `transaction_types` and `exclude`
+empty or re-examine them. The calibration bands use the labels of the validation slice (as the
+per-detector calibration always did), so the scanner is rule-based, not label-free. And 36 % of
+the laundering of the HI-Small validation slice belongs to no annotated motif: no motif detector
+can see it (bipartite motifs, also without structure, stay undetected), which caps what motifs
+alone can reach. Stacked with a model (hybrid detector), the motifs raise the HI-Small test
+PR-AUC of the random forest, HistGradientBoosting and GraphSAGE models to 0.614, 0.641 and 0.641
+(0.519, 0.484, 0.504 alone; one seed) and LI-Small to 0.236 with the random forest
+(`benchmarks/results_parts/hybrid/README.md`).
 Learned models inherit the biases of their labels. The cycle search is bounded by
 budgets and can be incomplete on dense graphs (a warning is logged and `truncated` is set). The
 risk-community detector ignores busy accounts (`max_member_degree`) and only sees groups whose

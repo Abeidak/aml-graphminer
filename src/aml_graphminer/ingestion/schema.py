@@ -125,7 +125,8 @@ def validate_transactions(
         ``False`` invalid rows (bad timestamp, missing account, negative or missing
         amount) are dropped and counted in ``result.attrs["dropped_rows"]``.
     sort:
-        Sort by timestamp (stable) and reset the index (``tx_id``).
+        Sort by timestamp, then ``source_row`` (the position in the source), and reset the index
+        (``tx_id``).
 
     Returns
     -------
@@ -184,7 +185,9 @@ def validate_transactions(
     extra = [c for c in out.columns if c not in CANONICAL_COLUMNS]
     out = out[[*CANONICAL_COLUMNS, *extra]]
     if sort:
-        out = out.sort_values("timestamp", kind="stable").reset_index(drop=True)
+        # ties are ordered by source_row (the position in the source file): the same order the
+        # detectors use when they score rows with a context (detectors/_context.py)
+        out = out.sort_values(["timestamp", "source_row"], kind="stable").reset_index(drop=True)
     else:
         out = out.reset_index(drop=True)
     out.index.name = "tx_id"

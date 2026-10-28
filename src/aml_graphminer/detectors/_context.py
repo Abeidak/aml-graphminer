@@ -5,8 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# Transactions of the same instant are put in a canonical order (context first, then by content,
-# then by transaction id) so that scores never depend on the order in which rows were supplied.
+# Transactions of the same instant are put in a canonical order so that scores never depend on the
+# order in which rows were supplied: first by ``source_row`` (their position in the source file,
+# which travels with the row; it is the order the training features were computed in, and for
+# minute-resolution data such as IBM AML it carries the order of events), then context first, then
+# by content and transaction id.
 _TIE_BREAK: tuple[str, ...] = (
     "sender",
     "receiver",
@@ -27,8 +30,8 @@ def stack_context(
     Returns ``(full, is_target, target_pos)``:
 
     * ``full`` — context + ``df`` sorted by timestamp, fresh ``RangeIndex``; rows of the same
-      timestamp are ordered canonically (context first, then by content and transaction id),
-      so shuffling the input never changes the result;
+      timestamp are ordered canonically (by ``source_row``, then context first, then by content
+      and transaction id), so shuffling the input never changes the result;
     * ``is_target`` — boolean mask of the rows of ``full`` that come from ``df``;
     * ``target_pos`` — for those rows, the position of the row in ``df``.
     """
@@ -44,7 +47,14 @@ def stack_context(
         past["_label"] = context.index.astype(str)
         parts.insert(0, past)
     full = pd.concat(parts, ignore_index=True)
-    keys = ["timestamp", "_target", *[c for c in _TIE_BREAK if c in full.columns], "_label"]
+    first = ["source_row"] if "source_row" in full.columns else []
+    keys = [
+        "timestamp",
+        *first,
+        "_target",
+        *[c for c in _TIE_BREAK if c in full.columns],
+        "_label",
+    ]
     full = full.sort_values(keys, kind="stable").reset_index(drop=True)
     is_target = full["_target"].to_numpy(dtype=bool)
     target_pos = full.loc[is_target, "_pos"].to_numpy(dtype=int)

@@ -98,3 +98,18 @@ def test_config_json_is_human_readable(trained, tmp_path):
     assert payload["model_type"] == "tabular" and payload["kind"] == "rf"
     assert {"threshold", "metrics", "stats", "library_version"} <= set(payload)
     assert isinstance(pd.Series(payload["metrics"]).get("pr_auc"), float)
+
+
+def test_scores_with_context_match_the_training_features_when_timestamps_tie(synth_df):
+    # minute/hour-resolution data (IBM AML) has many transactions per timestamp: scoring a slice
+    # with its history must order them as the training features did (by source_row)
+    from aml_graphminer.evaluation import temporal_split
+    from aml_graphminer.ingestion import validate_transactions
+
+    tied = validate_transactions(synth_df.assign(timestamp=synth_df["timestamp"].dt.floor("6h")))
+    det = TabularDetector.fit(tied, "logreg")
+    masks = temporal_split(tied)
+    feats = det.pipeline.transform_splits(tied, masks)
+    expected = det.baseline.predict_proba(feats["test"].tabular(masks["test"], det.with_nodes))
+    got = det.score(tied[masks["test"]], tied[masks["train"] | masks["val"]])
+    assert np.allclose(got.to_numpy(), expected)

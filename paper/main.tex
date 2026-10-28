@@ -6,7 +6,11 @@
 %
 % Build:   latexmk -pdf main.tex        (needs references.bib and, optionally, results.tex)
 % Figures: python figures/make_figures.py
-% Table:   python ../benchmarks/make_report.py ../benchmarks/results   (writes ../benchmarks/results/results.tex)
+% Table:   python ../benchmarks/make_report.py ../benchmarks/results <part folders>
+%          (writes ../benchmarks/results/results.tex, see ../benchmarks/README.md)
+%
+% Every number in this draft was measured with the repository (benchmarks/results/REPORT.md,
+% docs/explainability.md, docs/limitations.md); none is a target or an estimate.
 \IfFileExists{elsarticle.cls}{%
   \documentclass[review,12pt]{elsarticle}%
 }{%
@@ -38,19 +42,24 @@
 \address[urk]{Al-Khawarizmi Research Unit, University of Nouakchott, Mauritania}
 
 \begin{abstract}
-Detecting money laundering means finding rare, structured behaviour in large transaction graphs
-and explaining every alert to an investigator. Published graph-neural-network experiments are hard
-to reproduce because evaluation protocols differ and often leak future information.
-\amlgm{} is a Python toolkit that ingests transaction data (IBM AML, Elliptic, custom formats),
-builds leak-free temporal features, detects six classical laundering motifs and risk communities,
-trains tabular baselines, GCN, GraphSAGE and GAT classifiers and a label-free graph auto-encoder
-under one temporal protocol, and explains alerts through pattern evidence, occlusion,
-GNNExplainer, PGExplainer, Captum and attention. A web investigation interface, a command line,
-a REST API, notebooks and benchmark scripts make studies reproducible and alerts auditable.
+Money laundering moves an estimated 2--5\,\% of world GDP every year, yet anti-money-laundering
+(AML) systems still rely on proprietary rule engines that bury investigators in false alerts, while
+the graph neural networks (GNNs) proposed in research are hard to reproduce and seldom explained.
+\amlgm{} is an open-source Python toolkit that unifies the two worlds on transaction graphs. It
+ingests the IBM AML and Elliptic benchmarks or any CSV/JSON/Parquet table into one validated schema,
+builds leak-free temporal features, detects six classical laundering motifs and risk communities
+with auditable evidence, trains tabular baselines, GCN, GraphSAGE, GAT and a label-free graph
+auto-encoder under one temporal protocol, stacks any model with the motifs, and explains every alert
+through pattern evidence, occlusion, GNNExplainer, PGExplainer, Captum and attention, reporting how
+much the neighbourhood really changes the score. A web investigation interface, a command line, a
+REST API, MLflow, Hugging Face Hub and Neo4j exports, notebooks and benchmark scripts make studies
+reproducible. On IBM AML HI-Small (0.18\,\% laundering), GraphSAGE reaches a test PR-AUC of 0.531,
+the untrained motif scanner 0.340 and a random forest stacked with the motifs 0.562. The toolkit targets researchers, teachers and institutions, such as regional banks, that
+cannot afford commercial AML suites.
 \end{abstract}
 
 \begin{keyword}
-anti-money laundering \sep graph neural networks \sep explainable AI \sep transaction graphs \sep financial crime \sep reproducibility
+anti-money laundering \sep graph neural networks \sep open-source \sep financial crime \sep explainable AI
 \end{keyword}
 
 \end{frontmatter}
@@ -64,11 +73,11 @@ anti-money laundering \sep graph neural networks \sep explainable AI \sep transa
 \textbf{Nr.} & \textbf{Code metadata description} & \textbf{Value} \\
 \midrule
 C1 & Current code version & v0.1.0 \\
-C2 & Permanent link to code/repository used for this code version & \todo{GitHub URL and Zenodo DOI of the archived release} \\
+C2 & Permanent link to code/repository used for this code version & \todo{public GitHub URL and Zenodo DOI of the archived release (the repository is private until submission)} \\
 C3 & Permanent link to Reproducible Capsule & \todo{optional (e.g.\ Code Ocean)} \\
 C4 & Legal Code License & MIT \\
 C5 & Code versioning system used & git \\
-C6 & Software code languages, tools, and services used & Python 3.11+, JavaScript (web interface); PyTorch, PyTorch Geometric, PyTorch Lightning, Captum, scikit-learn, NetworkX, pandas, Pydantic, Click, FastAPI, MLflow, Neo4j driver; pytest, GitHub Actions, Sphinx, Docker \\
+C6 & Software code languages, tools, and services used & Python 3.11+, JavaScript (web interface); PyTorch, PyTorch Geometric, PyTorch Lightning, Captum, scikit-learn, XGBoost, NetworkX, pandas, Pydantic, Click, FastAPI, MLflow, Neo4j driver; pytest, Hypothesis, GitHub Actions, Sphinx, Docker \\
 C7 & Compilation requirements, operating environments \& dependencies & Linux (reference), macOS, Windows; the core installs without PyTorch; GNN training needs \texttt{aml-graphminer[gnn]} and the \texttt{pyg-lib} wheel; GPU optional \\
 C8 & Link to developer documentation/manual & \todo{Read the Docs URL} \\
 C9 & Support email for questions & \todo{maintainer e-mail} \\
@@ -76,137 +85,192 @@ C9 & Support email for questions & \todo{maintainer e-mail} \\
 \end{tabular}
 \end{table}
 
-\section{Purpose and functionality}
+\section{Motivation and significance}
 
-Money laundering hides illicit funds in the volume of legitimate payments. Detection is a
-needle-in-a-haystack problem (about 0.1\,\% of the transactions of the IBM AML benchmark are
-laundering \cite{altman2023realistic}), and an alert is only useful if an analyst can see \emph{why}
-it was raised. Graph methods suit the problem because laundering schemes are relational: funds are
-split, layered through intermediaries and gathered again. Graph neural networks (GNNs) such as GCN
-\cite{kipf2017semi}, GraphSAGE \cite{hamilton2017inductive} and GAT \cite{velickovic2018graph} have been
-applied to Bitcoin \cite{weber2019anti} and bank-like data \cite{altman2023realistic,egressy2024provably,cardoso2022laundrograph}, but studies are
-rarely comparable: splits are random rather than temporal, features are fitted on all data, and
-explanations are an afterthought.
+Money laundering hides the proceeds of crime in the volume of legitimate payments. The United
+Nations Office on Drugs and Crime estimated the funds laundered in 2009 at about 1.6 trillion US
+dollars, 2.7\,\% of world GDP, in line with the 2--5\,\% range of earlier International Monetary
+Fund estimates \cite{unodc2011illicit}. Financial institutions must detect and report suspicious
+activity under the FATF Recommendations \cite{fatf2012recommendations}, transposed in West Africa by
+Directive n\textsuperscript{o}\,02/2015/CM/UEMOA and the uniform law applied under the BCEAO
+\cite{uemoa2015directive}. Detection is a needle-in-a-haystack problem
+--- 0.18\,\% of the test transactions of the IBM AML HI-Small benchmark are laundering
+\cite{altman2023realistic} --- and an alert is only useful if an analyst can see \emph{why} it was
+raised. Rule engines saturate investigators with false positives, while deep models that cannot
+justify a decision are hard to accept for supervisors \cite{fatf2021newtech}.
 
-\amlgm{} packages the full pipeline with the evaluation protocol built in. It
-(i) reads the IBM AML files, Elliptic Bitcoin and generic CSV/JSON/Parquet into one validated
-transaction schema, including the laundering-pattern annotations of the IBM data;
-(ii) computes \emph{causal} features fitted on the training period only;
-(iii) detects six structural motifs without training --- fan-in, fan-out, smurfing, time-respecting
-cycles, scatter-gather and gather-scatter --- and \emph{risk communities} (groups of relay accounts
-found with connected components and Louvain \cite{blondel2008fast}), each alert carrying its accounts,
-transactions and numeric evidence;
-(iv) trains tabular baselines (logistic regression, random forest, gradient boosting, XGBoost),
-GCN, GraphSAGE and GAT edge classifiers with neighbour sampling, and a graph auto-encoder that learns
-\emph{without labels} (structure and attribute decoders, in the spirit of
-\cite{kipf2016variational,ding2019deep}), all on the \emph{same} features and temporal split, with
-reproducible scores;
-(v) explains alerts by pattern evidence, model-agnostic occlusion of neighbouring transactions and
-accounts, GNNExplainer \cite{ying2019gnnexplainer}, PGExplainer \cite{luo2020parameterized},
-Integrated Gradients \cite{sundararajan2017axiomatic} through Captum \cite{kokhlikyan2020captum} and
-attention weights;
-(vi) benchmarks all models over several seeds with standard deviations, bootstrap confidence
-intervals and per-motif recall. The same functions are exposed by a web investigation interface (dashboard, alerts with their
-sub-graph, explained transactions, account profiles), a command line (\texttt{amlgm}), a REST API,
-MLflow tracking, a Hugging Face Hub exporter and a Neo4j exporter.
+Graph methods suit the problem because laundering schemes are relational: funds are split, layered
+through intermediaries and gathered again. GNNs such as GCN \cite{kipf2017semi}, GraphSAGE
+\cite{hamilton2017inductive} and GAT \cite{velickovic2018graph} have been applied to Bitcoin
+\cite{weber2019anti} and to synthetic bank data produced by simulators such as AMLSim
+\cite{weber2018scalable}, the IBM AMLworld generator \cite{altman2023realistic} or, recently, Tide
+\cite{vandenbeukel2026tide}, with dedicated architectures \cite{egressy2024provably,cardoso2022laundrograph}.
+Yet studies are rarely comparable: each re-implements its own pipeline, splits are random rather
+than temporal, features are fitted on all data, and explanations are an afterthought. No
+open-source toolkit puts deterministic typology detectors, learned models and explanations behind
+one protocol. \amlgm{} fills that gap: it is a tested library, not a notebook, and every number
+quoted below can be regenerated with one command.
 
-\section{Software architecture}
+\section{Software description}
 
-The code is organised in six layers (Fig.~\ref{fig:arch}); each depends only on those below, and
-heavy dependencies (PyTorch, PyTorch Geometric \cite{fey2019fast}, FastAPI) are optional extras imported
-lazily, so the core runs on a laptop without a GPU. Tabular models use scikit-learn \cite{pedregosa2011scikit};
-classical graph algorithms use NetworkX \cite{hagberg2008exploring}.
+\paragraph{Architecture} The code is organised in six layers (Fig.~\ref{fig:arch}): ingestion
+(adapters for IBM AML, Elliptic and generic tables, Pydantic validation, parser of the IBM laundering
+annotations), features (causal trailing windows of 1\,h, 24\,h and 7\,d, PageRank, degrees,
+velocity, fitted on the training period only), graph (NetworkX, PyTorch Geometric
+\cite{fey2019fast} and heterogeneous representations, Neo4j export), detectors, explainers and
+interfaces. Each layer depends only on those below; heavy dependencies (PyTorch, FastAPI, Captum)
+are optional extras imported lazily, so the core runs on a laptop without a GPU. Tabular models use
+scikit-learn \cite{pedregosa2011scikit} and XGBoost; graph algorithms use NetworkX
+\cite{hagberg2008exploring}.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/architecture.pdf}
-\caption{The six layers of \amlgm. Every interface (CLI, REST API, notebooks) is a thin wrapper
-around the same Python SDK.}
+\caption{The six layers of \amlgm. Every interface (web interface, CLI, REST API, notebooks) is a
+thin wrapper around the same Python SDK.}
 \label{fig:arch}
 \end{figure}
 
-Three design decisions follow from the reproducibility goal. \emph{Temporal protocol:} transactions are
-split by time (60/20/20 by default); normalisation statistics and vocabularies are fitted on the
-training part; transaction features use trailing windows (1\,h, 24\,h, 7\,d, all-time) that never see
-later transactions; account aggregates are computed on the graph observable at each split; decision
-thresholds are chosen on validation and frozen for test. These properties are enforced by unit tests that
-alter future data and check that earlier features do not move. \emph{Uniform detectors:} motif scanner,
-tabular models and GNNs share one interface (\texttt{score}, \texttt{predict}, \texttt{save},
-\texttt{load}) and one on-disk format that carries the feature statistics, so a saved model scores new data
-without retraining and can be served or published. \emph{Explanations as data:} every method returns the
-same \texttt{Explanation} object (importance of neighbouring transactions and accounts, raw-attribute
-sensitivities, motifs involved), serialisable to JSON and NetworkX.
+\paragraph{Detectors} Six motif detectors --- fan-in, fan-out, smurfing, time-respecting cycles,
+scatter-gather, gather-scatter --- and a risk-community detector (relay accounts, Louvain
+\cite{blondel2008fast}) need no training; each alert carries its accounts, transactions and
+numbers. Amounts are converted to a reference currency with exchange rates inferred from the
+cross-currency transactions themselves, and a time slice is scanned with the preceding days as
+unlabelled context, so a motif that changes currency or straddles the start of the slice is still
+seen whole. Learned detectors are logistic regression, random forest, gradient boosting, XGBoost,
+GCN, GraphSAGE and GAT edge classifiers with neighbour sampling and a graph auto-encoder trained
+without labels \cite{kipf2016variational,ding2019deep}. A hybrid detector stacks any of them with
+the motif scanner (a three-coefficient logistic regression fitted on validation). All share one
+interface (\texttt{fit}, \texttt{score}, \texttt{predict}, \texttt{save}, \texttt{load}) and one
+on-disk format --- a \texttt{config.json} with the feature statistics, threshold and test metrics
+next to the weights --- which \texttt{amlgm export-hub} turns into a Hugging Face Hub repository with
+a generated model card.
 
-\section{Illustrative example}
+\paragraph{Configuration} Detectors are configured in YAML, validated when the file is loaded
+(unknown keys and malformed durations fail early):
 
-The listing runs the workflow on the synthetic generator shipped with the package (no download);
-the same calls apply to \texttt{read\_transactions("HI-Small\_Trans.csv")}.
+\begin{lstlisting}
+patterns:
+  fan_in:  {min_counterparties: 3, window: 120h, min_burst_ratio: 0}
+  cycle:   {max_length: 12, max_span: 4d, min_hop_ratio: 0.5, max_hop_ratio: 1.5}
+  currency: {convert: true, reference: US Dollar}
+  lookback: 4d                  # unlabelled context before a scored slice
+  transaction_types: [ACH]
+\end{lstlisting}
+
+\paragraph{Protocol and explanations} Transactions are split by time (60/20/20); statistics and
+thresholds are fitted on training and validation only, enforced by unit tests that alter future
+data. Alerts are explained by pattern evidence, occlusion of neighbouring transactions and
+accounts, GNNExplainer \cite{ying2019gnnexplainer}, PGExplainer \cite{luo2020parameterized},
+Integrated Gradients \cite{sundararajan2017axiomatic} through Captum \cite{kokhlikyan2020captum}
+and GAT attention. Every method returns the same \texttt{Explanation} object (signed importance of
+neighbouring transactions, accounts and features, motifs involved), serialisable to JSON, Markdown
+and NetworkX; GNN explanations also report the measured score with and without the neighbourhood.
+The pipeline from loading to explanation fits in a few lines:
 
 \begin{lstlisting}[language=Python]
 import aml_graphminer as aml
-from aml_graphminer.detectors.bundle import TabularDetector
-from aml_graphminer.explainers import (OcclusionExplainer, detector_score_fn,
-                                       explain_with_patterns, plot_explanation)
+from aml_graphminer.detectors.bundle import MotifDetector, TabularDetector
+from aml_graphminer.explainers import explain_alerts
 
-df = aml.generate_transactions(n_accounts=900, n_background=7000, illicit_ratio=0.02)
-scan = aml.PatternScanner().scan(df)          # six motif detectors, no training
-model = TabularDetector.fit(df, "hgb")        # temporal split, leak-free features
-print(model.metrics)                          # test metrics at the validation threshold
-tx = int(model.score(df).idxmax())
-exp = OcclusionExplainer(detector_score_fn(model), hops=2).explain(df, tx)
+df = aml.load_dataset("data/HI-Small_Trans.csv")   # + laundering annotations
+motifs = MotifDetector.fit(df)                     # calibrated on validation
+model = TabularDetector.fit(df, "hgb")             # temporal split, leak-free
+print(model.metrics)                               # test metrics
+case = explain_alerts(model, df, top=20, out_dir="case/")
 \end{lstlisting}
 
-Figure~\ref{fig:expl} shows the exact explanation of a transaction flagged by the cycle detector:
-the six accounts and transactions of the round trip, with the explained transaction highlighted.
-On the command line, the same session is \texttt{amlgm scan}, \texttt{amlgm train}, \texttt{amlgm explain
---plot}, and \texttt{amlgm benchmark} produces the model comparison; \texttt{amlgm serve --demo} opens
-the whole workflow in a browser without any preparation.
+\section{Illustrative examples}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.62\linewidth]{figures/example_explanation.pdf}
-\caption{Pattern explanation of one transaction (red) on \emph{synthetic} data: it belongs to a
-laundering cycle through six accounts in which the amount is almost conserved.}
-\label{fig:expl}
-\end{figure}
+The three examples are the executed notebooks of the repository.
+
+\paragraph{(1) Quick start} \texttt{01\_quickstart} runs the whole toolkit on the bundled synthetic
+generator (no download): motif and community alerts, a gradient-boosting model, its explanation and
+the label-free auto-encoder. The same session is \texttt{amlgm scan}, \texttt{amlgm train} and
+\texttt{amlgm explain} on the command line, and \texttt{amlgm serve --demo} opens it in a browser.
+
+\paragraph{(2) Benchmark} \texttt{02\_ibm\_aml\_benchmark} and \texttt{benchmarks/run\_ibm.py}
+compare every detector on IBM AML HI-Small and LI-Small (5.08 and 6.92 million transactions) and
+on Elliptic (Table~\ref{tab:results}). On HI-Small GraphSAGE reaches a test PR-AUC of
+$0.531\pm0.022$ over three seeds, ahead of the random forest ($0.499\pm0.017$); on the harder
+LI-Small file (prevalence 0.067\,\%) the random forest leads ($0.191\pm0.007$). The motif scanner
+alone, without any training and tuned on validation only, reaches 0.340 on HI-Small and 0.147 on
+LI-Small --- below the best learned models, above logistic regression, and on LI-Small above
+HistGradientBoosting, GCN and GAT --- with exact, auditable alerts. Currency conversion and the
+unlabelled history context are what make this possible: without them the same scanner reached
+0.005 and 0.001, its cycle detector recovering none of the annotated cycles (0.81 of them on
+HI-Small now). Stacking a saved model with the motifs raises the HI-Small test PR-AUC from 0.519
+to 0.562 for a random forest and from 0.504 to 0.527 for GraphSAGE (one seed), but brings nothing
+on LI-Small (0.191 to 0.186 for the random forest). On Elliptic the
+tree models (PR-AUC about 0.79) clearly beat the GNNs (GraphSAGE $0.497\pm0.056$), which shows
+why the toolkit always reports both.
 
 \IfFileExists{../benchmarks/results/results.tex}{%
 \begin{table}[t]
 \centering\scriptsize
 \input{../benchmarks/results/results.tex}
-\caption{Test-split results on IBM AML HI-Small and LI-Small (temporal 60/20/20 split; mean
-$\pm$ standard deviation over three seeds; motif thresholds tuned on the validation split only;
-tabular models on a laptop CPU, GNNs on a Kaggle T4 GPU), generated by
-\texttt{benchmarks/make\_report.py}. Elliptic: node classification, time steps 1--29 / 30--34 /
-35--49. Test prevalence: 0.177\,\% (HI-Small), 0.067\,\% (LI-Small), 6.5\,\% (Elliptic).}
+\caption{Test-split results generated by \texttt{benchmarks/make\_report.py}: IBM AML HI-Small and
+LI-Small (temporal 60/20/20 split; mean $\pm$ standard deviation over three seeds; motif thresholds
+tuned on the validation split only; tabular models and motifs on a laptop CPU, GNNs on a Kaggle T4
+GPU) and Elliptic (node classification, time steps 1--29 / 30--34 / 35--49). Test prevalence:
+0.177\,\% (HI-Small), 0.067\,\% (LI-Small), 6.5\,\% (Elliptic).}
+\label{tab:results}
 \end{table}
 }{%
 \par\medskip\noindent\fbox{\parbox{0.95\linewidth}{\small\todo{Benchmark table: run
-\texttt{benchmarks/run\_ibm.py} and \texttt{run\_elliptic.py} on the real data, then
-\texttt{benchmarks/make\_report.py}; it writes \texttt{benchmarks/results/results.tex}, which this paper includes
-automatically. No results on real data are claimed in this draft.}}}\par\medskip
+\texttt{benchmarks/make\_report.py}; it writes \texttt{benchmarks/results/results.tex}, which this
+paper includes automatically.}}}\par\medskip
 }
+
+\paragraph{(3) Explaining an alert} \texttt{03\_explainability} investigates alerts with every
+method. Figure~\ref{fig:expl} shows the exact evidence of a transaction flagged by the cycle
+detector. For the GraphSAGE model trained on HI-Small, the toolkit's neighbourhood check shows
+that the eight highest-scored test transactions keep a score of 0.960--1.000 when their
+neighbouring transactions are removed (0.988--1.000 with them), and removing the five neighbours
+ranked first by GNNExplainer leaves the score unchanged: the decision rests on the transaction and
+the profiles of its accounts. PGExplainer accordingly returns empty masks, and feature attributions
+(Captum) are the informative view --- a finding that would go unnoticed if the edge masks were
+shown without this check.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/example_explanation.pdf}
+\caption{Pattern explanation of one transaction (red) on \emph{synthetic} data: it belongs to a
+laundering cycle through three accounts in which the amount is almost conserved.}
+\label{fig:expl}
+\end{figure}
 
 \section{Impact}
 
-\amlgm{} lowers the cost of three activities. \emph{Reproducible research:} a study that compares
-GNNs, tabular models and motif rules on IBM AML or Elliptic can be rerun with one command, with
-configuration, seeds and library versions stored next to the results. \emph{Teaching:} the synthetic
-generator, the executed notebooks and the web interface let students explore laundering typologies,
-detectors, explanations and evaluation pitfalls without access to bank data. \emph{Prototyping in institutions:} saved detectors can be served through a
-REST API and exported with a model card, and any new motif, input format or explainer is added through a
-small registry (documented in the developer guide) without touching the rest of the pipeline.
-The software originates in a final-year project at the University of Nouakchott, where it replaces
-notebook-only experiments with a tested library. \todo{List publications and projects that use the software once they exist.}
+\emph{Academic.} Each AML/GNN study currently rebuilds its pipeline; \amlgm{} gives a reusable,
+tested one (more than 450 tests, 98\,\% line coverage, typed, continuous integration) with the
+temporal protocol, seeds, configuration and library versions stored next to every result, so a
+comparison can be rerun or extended with one command. New motifs, input formats and explainers are
+added through small registries without touching the rest of the pipeline. \emph{Teaching.} The
+synthetic generator, the executed notebooks and the web interface let students explore laundering
+typologies, detectors, explanations and evaluation pitfalls without access to bank data.
+\emph{Industrial.} Fintechs and regional banks that cannot license commercial suites get detectors
+that run on a laptop, can be served through a REST API and investigated in a browser.
+\emph{Regulatory.} Motif alerts carry their own evidence and every model alert can be explained and
+exported to a case file, which addresses the explainability expected by supervisors
+\cite{fatf2021newtech}. \emph{Geographic.} The software originates at the University of Nouakchott;
+being free and light, it is accessible to institutions of the UEMOA/ECOWAS region and other
+developing economies. \todo{Add a sourced figure for the size of the AML software market and list
+publications and projects that use the software once they exist.}
 
-\section{Limitations and future work}
+\section{Conclusions}
 
-The IBM data are synthetic and their labels exact, so benchmark scores measure how well a method recovers
-the generator's motifs, not real-world performance; motif thresholds are defaults to be tuned on
-institutional data; explanations are local approximations whose fidelity should be checked before use in a
-case file; the REST API has no authentication. The label-free auto-encoder flags unusual rather than
-illicit behaviour. Planned work includes temporal GNNs, support for directed-multigraph GNNs
-\cite{egressy2024provably}, federated training across banks, and fairness diagnostics.
+\amlgm{} unifies deterministic typology detection, learned graph models, their combination and
+their explanation behind one leak-free temporal protocol and four interfaces. Measured on the public
+benchmarks, it reproduces the strength of GNNs on IBM AML HI-Small, shows where tree models remain
+better (LI-Small, Elliptic), shows that typology rules become useful once amounts are compared
+across currencies and motifs are seen whole (alone, and stacked with a model on HI-Small), and
+exposes the limits of edge-mask explanations instead of hiding them. The IBM data are synthetic, so scores measure how well a
+method recovers the generator's motifs, not real-world performance; motif settings must be retuned
+on institutional data (the restriction to ACH transfers chosen on IBM validation data is a property
+of that simulator); the REST API has no authentication. Future work includes heterogeneous and
+temporal GNNs, directed-multigraph GNNs \cite{egressy2024provably}, privacy-preserving training
+across banks (federated learning) and validation on real data with a partner institution.
 
 \section*{Acknowledgements}
 \todo{Funding, supervision, data providers (IBM, Elliptic).}

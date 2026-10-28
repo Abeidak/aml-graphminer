@@ -73,6 +73,7 @@ def architecture() -> None:
         ax.text(2.35, y + 0.5, text, va="center", ha="left", fontsize=7)
     fig.tight_layout()
     fig.savefig(OUT / "architecture.pdf")
+    fig.savefig(OUT / "architecture.png", dpi=200)  # slides and the thesis
     plt.close(fig)
 
 
@@ -80,17 +81,18 @@ def example_explanation() -> None:
     df = aml.generate_transactions(
         n_accounts=900, n_background=7000, days=10, illicit_ratio=0.02, seed=21
     )
-    masks = aml.temporal_split(df)
     detector = MotifDetector.fit(df)
     result = detector.scanner.scan(df)
-    scores = detector.score(df[masks["test"]], context=df[~masks["test"]])
-    tx_id = int(scores.sort_values(ascending=False).index[0])
+    # the strongest cycle alert: a round trip is the easiest motif to read on a figure
+    cycle = max((a for a in result.alerts if a.pattern == "cycle"), key=lambda a: a.score)
+    tx_id = int(cycle.tx_ids[0])
     explanation = explain_with_patterns(df, tx_id, result, detector.threshold)
     fig, ax = plt.subplots(figsize=(5.4, 3.6))
     plot_explanation(explanation, ax=ax)
     ax.set_title(f"Transaction {tx_id}: " + ", ".join(p["pattern"] for p in explanation.patterns))
     fig.tight_layout()
     fig.savefig(OUT / "example_explanation.pdf")
+    fig.savefig(OUT / "example_explanation.png", dpi=200)
     plt.close(fig)
 
 

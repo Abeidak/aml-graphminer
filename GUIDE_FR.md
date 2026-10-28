@@ -216,6 +216,8 @@ Puis <http://127.0.0.1:7474> et les requêtes de `neo4j-import\queries.cypher` (
 ## 8. Livrables qui demandent votre action (comptes personnels)
 
 Ces étapes nécessitent vos identifiants ou votre signature d'auteur ; tout le reste est prêt.
+L'état complet du projet (fait / reste à faire, résultats) est tenu dans
+[`ETAT_DU_PROJET.md`](ETAT_DU_PROJET.md).
 
 | livrable CDC | quoi faire |
 |---|---|

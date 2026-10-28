@@ -368,6 +368,24 @@ def test_captum_and_pgexplainer(synth_df):
         assert any(e.role == "target" and e.tx_id == tx for e in exp.edges)
 
 
+def test_every_gnn_explanation_reports_the_measured_neighbourhood_effect(synth_df):
+    """An edge mask is only meaningful if the neighbourhood changes the score: report by how much."""
+    pytest.importorskip("captum")
+    from aml_graphminer.explainers import TransactionIndex, explain_transaction
+    from aml_graphminer.explainers.gnn_explainers import _local_view, neighbourhood_effect
+
+    detector = GNNDetector.fit(synth_df, tiny_config("gat", epochs=1))
+    index = TransactionIndex(synth_df)
+    tx = int(synth_df.index[3100])
+    view = _local_view(detector.trained, synth_df, tx, index, 2, 25)
+    full, alone = neighbourhood_effect(detector.trained.model.eval(), view)
+    assert 0.0 <= full <= 1.0 and 0.0 <= alone <= 1.0
+    for method in ("gnnexplainer", "pgexplainer", "captum", "attention"):
+        exp = explain_transaction(detector, synth_df, tx, method, max_edges=25, index=index)
+        assert "measured neighbourhood effect" in exp.summary
+        assert f"{full:.3f}" in f"{exp.score:.3f}" or abs(exp.score - full) < 1e-6
+
+
 def test_explainers_can_run_in_any_order_on_one_model(synth_df):
     """GNNExplainer leaves `_edge_mask` registered as a parameter on the PyG layers, which used
     to detach the masks of the next explainers (Captum crashed, PGExplainer stopped learning)."""

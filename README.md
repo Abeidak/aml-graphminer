@@ -30,7 +30,9 @@ with the **evaluation protocol built in**:
   supervised **GCN / GraphSAGE / GAT** edge classifiers and an **unsupervised graph auto-encoder**
   (no label needed) on the same features and split, with reproducible scores;
 * **explanations** for every alert: exact pattern evidence, model-agnostic occlusion,
-  GNNExplainer, PGExplainer, Captum attributions and attention weights;
+  GNNExplainer, PGExplainer, Captum attributions and attention weights, each GNN explanation
+  reporting the *measured* effect of the neighbourhood on the score (on the IBM AML models it is
+  small: Captum's feature attributions are then the informative view);
 * a **web investigation interface** (dashboard, alerts with their sub-graph, explained
   transactions, account profiles), a **REST API** (OpenAPI 3.1), the `amlgm` **command line**,
   **MLflow** tracking, **Hugging Face Hub** export and a **Neo4j** export;

@@ -88,7 +88,11 @@ amlgm export-hub runs\sage hub\sage --repo-id VOTRE_COMPTE_HF/aml-graphminer-sag
 
 `amlgm --help` et `amlgm <commande> --help` décrivent toutes les options. Méthodes d'explication :
 `patterns` (preuves exactes, détecteur de motifs), `occlusion` (tout modèle), `gnnexplainer`,
-`pgexplainer`, `captum`, `attention` (GAT).
+`pgexplainer`, `captum`, `attention` (GAT). Chaque explication GNN se termine par **l'effet
+mesuré du voisinage** (score sans les transactions voisines). Sur les modèles IBM il est faible :
+le modèle décide surtout à partir de la transaction et de ses deux comptes. Les masques nuls de
+PGExplainer sont alors la bonne réponse, et **Captum** (caractéristiques déterminantes) est la
+méthode la plus parlante.
 
 ---
 

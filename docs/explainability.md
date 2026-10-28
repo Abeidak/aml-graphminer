@@ -99,6 +99,26 @@ transaction, which is exactly the edge-level question. Captum's binary conventio
 probabilities, so the adapter wraps the model with a sigmoid; the baseline of Integrated
 Gradients is the average (standardised) transaction.
 
+## Is the neighbourhood really what the model uses?
+
+An edge mask only explains a decision if removing the masked transactions changes the score.
+Every GNN explanation therefore ends with the **measured neighbourhood effect**: the score of the
+explained transaction with its local sub-graph and with the transaction alone
+(`aml_graphminer.explainers.gnn_explainers.neighbourhood_effect`).
+
+On the GraphSAGE model trained on IBM AML HI-Small, for the 8 highest-scored transactions of the
+test period, the score with the whole neighbourhood (80 transactions) was 0.988–1.000 and
+0.960–1.000 with the transaction alone; removing the 5 neighbours ranked first by GNNExplainer left
+it unchanged (for example 0.988 → 0.989). The decision rests on the transaction and the profiles
+of its two accounts, not on the neighbouring transactions. Consequences:
+
+* **PGExplainer** returns all-zero masks: with its size penalty this is the faithful answer, not
+  a failure (without the penalty its masks become arbitrary).
+* **GNNExplainer** masks around 0.8 must not be read as "these neighbours caused the alert" when
+  the measured effect is small; check with occlusion or the neighbourhood effect.
+* **Captum** (feature attributions) and **occlusion** are then the informative methods: they show
+  which transaction and account features drive the score.
+
 ## REST API and web interface
 
 `POST /explain` and `GET /api/datasets/{id}/transactions/{tx}/explain` accept every method that

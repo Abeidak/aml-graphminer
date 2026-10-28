@@ -97,6 +97,31 @@ def _local_view(
     )
 
 
+def neighbourhood_effect(model: Any, view: _LocalView) -> tuple[float, float]:  # pragma: no cover
+    """Score with the whole local sub-graph and with the explained transaction alone.
+
+    The difference is the measured influence of the neighbouring transactions. On the IBM AML
+    models it is often small (the decision rests on the transaction and its two accounts), and
+    then an edge mask, however it looks, cannot be a faithful explanation.
+    """
+    torch = require("torch", "gnn", "GNN explainers")
+    keep = torch.tensor([view.target, view.n_tx + view.target])
+    with torch.no_grad():
+        full = torch.sigmoid(model(view.x, view.edge_index, view.label_index, view.edge_feat))
+        alone = torch.sigmoid(
+            model(view.x, view.edge_index[:, keep], view.label_index, view.edge_feat)
+        )
+    return float(full[0]), float(alone[0])
+
+
+def _neighbourhood_note(model: Any, view: _LocalView) -> str:  # pragma: no cover - needs torch
+    full, alone = neighbourhood_effect(model, view)
+    return (
+        f" Without its {view.n_tx - 1} neighbouring transactions the score would be {alone:.3f}"
+        f" (measured neighbourhood effect {full - alone:+.3f})."
+    )
+
+
 def _build_explanation(
     method: str,
     view: _LocalView,
@@ -202,9 +227,11 @@ class GNNExplainerAdapter:  # pragma: no cover - needs torch
             score = float(
                 torch.sigmoid(model(view.x, view.edge_index, view.label_index, view.edge_feat))[0]
             )
-        return _build_explanation(
+        explanation = _build_explanation(
             self.method, view, edge_scores, node_scores, score, self.trained.threshold
         )
+        explanation.summary += _neighbourhood_note(model, view)
+        return explanation
 
 
 class AttentionExplainer:  # pragma: no cover - needs torch
@@ -253,9 +280,11 @@ class AttentionExplainer:  # pragma: no cover - needs torch
         np.add.at(node_scores, src_dst[0][:n], edge_scores)
         np.add.at(node_scores, src_dst[1][:n], edge_scores)
         node_scores = node_scores / (node_scores.max() or 1.0)
-        return _build_explanation(
+        explanation = _build_explanation(
             self.method, view, edge_scores, node_scores, score, self.trained.threshold
         )
+        explanation.summary += _neighbourhood_note(model, view)
+        return explanation
 
 
 def _probability(model: Any) -> Any:  # pragma: no cover - needs torch
@@ -383,6 +412,7 @@ class CaptumExplainerAdapter:  # pragma: no cover - needs torch + captum
                 f" Most influential feature: {top.name} (standardised value {float(top.value):.2f})"
                 f" {direction} the probability by {abs(top.importance):.3f}."
             )
+        explanation.summary += _neighbourhood_note(self.trained.model.eval(), view)
         return explanation
 
     def _feature_importances(
@@ -412,6 +442,11 @@ class PGExplainerAdapter:  # pragma: no cover - needs torch
     predicts how important every transaction of a sub-graph is from the embeddings of its two
     accounts. Explaining a new alert is then a single forward pass, and explanations of different
     alerts are consistent with each other.
+
+    Its size penalty drives the masks to zero when removing the neighbourhood does not change the
+    prediction. All-zero masks are then the faithful answer, not a failure: on the IBM AML models
+    the measured neighbourhood effect (reported in the summary) is usually a few hundredths, the
+    decision resting on the transaction and its two accounts (see ``docs/explainability.md``).
 
     The sub-graph of the explained transaction plays the role of the "graph" of PyG's
     graph-level PGExplainer, whose single output is the logit of that transaction.
@@ -519,7 +554,8 @@ class PGExplainerAdapter:  # pragma: no cover - needs torch
                 f"≈ {float(edge_scores.mean()):.2f}): the prediction is driven by the transaction "
                 "and account features rather than by the neighbourhood — see the captum method."
             )
-        explanation.summary += f" (explainer trained on {self.fitted_on} alert neighbourhoods)"
+        explanation.summary += f" (explainer trained on {self.fitted_on} alert neighbourhoods)."
+        explanation.summary += _neighbourhood_note(model, view)
         return explanation
 
 
@@ -528,5 +564,6 @@ __all__ = [
     "CaptumExplainerAdapter",
     "GNNExplainerAdapter",
     "PGExplainerAdapter",
+    "neighbourhood_effect",
     "reset_explain_state",
 ]

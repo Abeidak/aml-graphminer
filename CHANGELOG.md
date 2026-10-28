@@ -76,6 +76,10 @@ IBM AML *LI-Small* and *HI-Small*).
   both files (`results/eda-*`), motif thresholds tuned on the validation splits
   (`configs/patterns.yaml`).
 - `make_report.py` merges several result folders (CPU runs + GPU runs of the same dataset).
+- Every GNN explanation reports the measured neighbourhood effect (score with the local sub-graph
+  vs. the transaction alone, `neighbourhood_effect`). On the IBM AML GraphSAGE model it is small,
+  which is why PGExplainer returns all-zero masks: a faithful answer, documented in
+  `docs/explainability.md`, not a bug.
 - XGBoost baselines are saved in XGBoost's portable JSON format (`baseline.joblib.xgb.json`):
   its pickle failed to load across platforms ("input stream corrupted", Linux -> Windows).
 - Notebook `04` runs in the browser on Kaggle or Colab: installs the package from an uploaded

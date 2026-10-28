@@ -57,7 +57,7 @@ jobs:
       # No PyTorch / FastAPI here: the torch-free core must reach 90 % (see .coveragerc-core)
       - name: Tests with coverage gate
         run: pytest --cov=aml_graphminer --cov-config=.coveragerc-core --cov-report=term-missing --cov-report=xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         with:
           name: coverage-core
@@ -103,7 +103,7 @@ jobs:
         run: python -c "import torch, torch_geometric as g; print(torch.__version__, g.__version__)"
       - name: Full test-suite with the project-wide coverage gate
         run: pytest --cov=aml_graphminer --cov-report=term-missing --cov-report=xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-full
           path: coverage.xml
@@ -147,7 +147,7 @@ jobs:
           cache: pip
       - run: pip install -e ".[docs]"
       - run: sphinx-build -b html -n --keep-going docs docs/_build/html
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: docs-html
           path: docs/_build/html
@@ -170,7 +170,7 @@ jobs:
           "$RUNNER_TEMP/venv/bin/amlgm" --version
           "$RUNNER_TEMP/venv/bin/amlgm" generate "$RUNNER_TEMP/demo" --accounts 300 --background 2000
           "$RUNNER_TEMP/venv/bin/amlgm" scan "$RUNNER_TEMP/demo/Synth-Small_Trans.csv" --top 3
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/

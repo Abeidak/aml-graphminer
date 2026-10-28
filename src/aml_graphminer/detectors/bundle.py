@@ -3,7 +3,8 @@
 * :class:`MotifDetector` — structural-motif scanner (no training needed, calibration optional);
 * :class:`TabularDetector` — RF / HistGB / XGBoost / logistic regression on transaction + account features;
 * ``GNNDetector`` — supervised GCN / GraphSAGE / GAT (``gnn`` extra);
-* ``AutoEncoderDetector`` — unsupervised graph auto-encoder, trained without labels (``gnn`` extra).
+* ``AutoEncoderDetector`` — unsupervised graph auto-encoder, trained without labels (``gnn`` extra);
+* :class:`~aml_graphminer.detectors.hybrid.HybridDetector` — any of them stacked with the motifs.
 
 :func:`load_detector` restores any of them from a directory written by ``save`` (this is what
 the CLI ``score`` / ``explain`` / ``serve`` commands and the REST API use).
@@ -25,7 +26,7 @@ from ..exceptions import ConfigError, ModelError
 from ..features.pipeline import FeatureConfig, FeaturePipeline
 from ._context import restore_order, stack_context
 from .baselines import BASELINE_KINDS, TabularBaseline
-from .patterns import PatternConfig, PatternScanner
+from .patterns import PatternConfig, PatternScanner, lookback_history
 
 BUNDLE_VERSION = 1
 CONFIG_FILE = "config.json"
@@ -93,12 +94,14 @@ class MotifDetector:
             return cls(scanner)
         masks = temporal_split(df, fractions)
         val, test = df[masks["val"]], df[masks["test"]]
-        scanner.fit_calibration(val)
-        val_scores, _ = scanner.scan(val).transaction_scores()
+        lookback = scanner.config.lookback
+        val_hist, test_hist = (lookback_history(df, part, lookback) for part in (val, test))
+        scanner.fit_calibration(val, history=val_hist)
+        val_scores, _ = scanner.scan(val, val_hist).transaction_scores()
         threshold = (
             best_threshold(val["label"].to_numpy(), val_scores) if val["label"].sum() else 0.5
         )
-        test_scores, _ = scanner.scan(test).transaction_scores()
+        test_scores, _ = scanner.scan(test, test_hist).transaction_scores()
         metrics = (
             {
                 k: float(v)
@@ -114,6 +117,9 @@ class MotifDetector:
     def score(self, df: pd.DataFrame, context: pd.DataFrame | None = None) -> pd.Series:
         if len(df) == 0:
             return pd.Series(dtype="float64", name="score")
+        lookback = self.scanner.config.lookback
+        if context is not None and lookback is not None:  # older context cannot change a motif
+            context = lookback_history(pd.concat([context, df]), df, lookback)
         full, is_target, target_pos = stack_context(df, context)
         scores, _ = self.scanner.scan(full).transaction_scores()
         values = restore_order(scores, is_target, target_pos, len(df))
@@ -270,7 +276,7 @@ def read_bundle_config(directory: str | Path) -> dict[str, Any]:
 
 
 def load_detector(directory: str | Path) -> Any:
-    """Restore any detector saved with ``save`` (motifs, tabular, GNN or graph auto-encoder)."""
+    """Restore any detector saved with ``save`` (motifs, tabular, GNN, auto-encoder, hybrid)."""
     directory = Path(directory)
     payload = read_bundle_config(directory)
     kind = payload.get("model_type") or ("gnn" if payload.get("model") == "EdgeGNN" else None)
@@ -286,6 +292,10 @@ def load_detector(directory: str | Path) -> Any:
         from .gnn import AutoEncoderDetector
 
         return AutoEncoderDetector.load(directory)
+    if kind == "hybrid":
+        from .hybrid import HybridDetector
+
+        return HybridDetector._from_payload(directory, payload)
     raise ModelError(f"unknown detector type {kind!r} in {directory / CONFIG_FILE}")
 
 

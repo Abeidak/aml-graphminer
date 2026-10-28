@@ -80,6 +80,8 @@ The modules named after the project specification (`csv_adapter`, `ibm_adapter`,
    :members:
 .. automodule:: aml_graphminer.detectors.bundle
    :members:
+.. automodule:: aml_graphminer.detectors.hybrid
+   :members:
 .. automodule:: aml_graphminer.detectors.gnn.config
    :members:
 .. automodule:: aml_graphminer.detectors.gnn.detector

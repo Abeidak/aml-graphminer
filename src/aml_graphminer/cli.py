@@ -17,7 +17,7 @@ from .exceptions import AMLGraphMinerError
 
 SCHEMAS = click.Choice(["auto", "ibm", "canonical"])
 GNN_MODELS = ("gcn", "sage", "gat", "gae")
-MODEL_CHOICES = ("patterns", "rf", "hgb", "xgb", "logreg", *GNN_MODELS)
+MODEL_CHOICES = ("patterns", "rf", "hgb", "xgb", "logreg", *GNN_MODELS, "hybrid")
 
 
 def _echo_json(payload: Any) -> None:
@@ -214,6 +214,13 @@ def scan(
     "--trainer", type=click.Choice(["torch", "lightning"]), default=None, help="GNN training loop."
 )
 @click.option("--mlflow", "use_mlflow", is_flag=True, help="Track the run with MLflow.")
+@click.option(
+    "--base",
+    "base_dir",
+    type=click.Path(exists=True, file_okay=False),
+    default=None,
+    help="--model hybrid: saved detector stacked with the motifs (trained on the same split).",
+)
 @_with_data_options
 def train(
     data: str,
@@ -224,6 +231,7 @@ def train(
     epochs: int | None,
     trainer: str | None,
     use_mlflow: bool,
+    base_dir: str | None,
     schema: str,
     nrows: int | None,
     patterns_file: str | None,
@@ -232,6 +240,8 @@ def train(
 
     ``--model gae`` is the unsupervised graph auto-encoder: it needs no label (labels, when
     present, only choose the alert threshold); its encoder is ``gnn.kind`` of the configuration.
+    ``--model hybrid --base runs/<model>`` stacks a saved detector with the motif scanner on the
+    validation slice.
     """
     from .detectors.bundle import MotifDetector, TabularDetector
 
@@ -239,8 +249,21 @@ def train(
     if use_mlflow:
         cfg.tracking.backend = "mlflow"
     df = _load(data, schema, nrows, patterns_file)
-    if kind == "patterns":
-        detector: Any = MotifDetector.fit(
+    if kind == "hybrid":
+        from .detectors.bundle import load_detector
+        from .detectors.hybrid import HybridDetector
+
+        if base_dir is None:
+            raise click.UsageError("--model hybrid needs --base <saved detector directory>")
+        _require_labels(df, "training")
+        detector: Any = HybridDetector.fit(
+            df,
+            load_detector(base_dir),
+            cfg.pattern_config(),
+            fractions=cfg.benchmark.fractions,
+        )
+    elif kind == "patterns":
+        detector = MotifDetector.fit(
             df if df["label"].notna().all() else None, cfg.pattern_config()
         )
     elif kind in GNN_MODELS:
@@ -433,8 +456,20 @@ def score(
     "--tx",
     "tx_id",
     type=int,
-    required=True,
+    default=None,
     help="Transaction id (row position / index of the table).",
+)
+@click.option(
+    "--top",
+    type=int,
+    default=None,
+    help="Instead of --tx: explain the TOP highest-scored alerts (written to --out-dir).",
+)
+@click.option(
+    "--out-dir",
+    type=click.Path(file_okay=False),
+    default=None,
+    help="With --top: folder of the case file (one JSON + Markdown per alert, index.csv).",
 )
 @click.option(
     "--method",
@@ -467,7 +502,9 @@ def score(
 def explain(
     model_dir: str,
     data: str,
-    tx_id: int,
+    tx_id: int | None,
+    top: int | None,
+    out_dir: str | None,
     method: str,
     hops: int | None,
     max_edges: int,
@@ -477,12 +514,30 @@ def explain(
     nrows: int | None,
     patterns_file: str | None,
 ) -> None:
-    """Explain why a transaction was (not) flagged."""
+    """Explain why a transaction was (not) flagged, or the top alerts of a file (--top)."""
     from .detectors.bundle import load_detector
-    from .explainers import explain_transaction
+    from .explainers import explain_alerts, explain_transaction
 
+    if (tx_id is None) == (top is None):
+        raise click.UsageError("give either --tx <id> or --top <number of alerts>")
     detector = load_detector(model_dir)
     df = _load(data, schema, nrows, patterns_file)
+    if top is not None:
+        try:
+            explanations = explain_alerts(
+                detector, df, top, method, hops=hops, max_edges=max_edges, out_dir=out_dir
+            )
+        except AMLGraphMinerError as exc:
+            raise click.ClickException(str(exc)) from exc
+        for exp in explanations:
+            score = "" if exp.score is None else f" score {exp.score:.3f}"
+            click.echo(f"tx {exp.tx_id}{score}: {exp.summary}")
+        if not explanations:
+            click.echo("no transaction reaches the alert threshold")
+        if out_dir:
+            click.echo(f"\n{len(explanations)} explanations written to {out_dir}")
+        return
+    assert tx_id is not None  # guaranteed by the --tx / --top check above
     if tx_id not in df.index:
         raise click.ClickException(
             f"transaction {tx_id} not found (valid ids: {df.index.min()}..{df.index.max()})"

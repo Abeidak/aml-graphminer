@@ -69,7 +69,7 @@ def read_raw(
 
     if fmt in ("csv", "tsv"):
         sep = "\t" if fmt == "tsv" else kwargs.pop("sep", ",")
-        if engine == "polars":  # pragma: no cover - optional dependency
+        if engine == "polars":
             pl = require("polars", "scale", "the polars CSV engine")
             names = pl.read_csv(path, separator=sep, n_rows=0).columns
             overrides = {names[i]: pl.Utf8 for i in str_positions if i < len(names)}

@@ -9,8 +9,8 @@ that are shipped with the repository.
 * With ``--execute`` every code cell is run in one shared namespace and its outputs (stdout,
   stderr, the value of a trailing expression, DataFrames as HTML, matplotlib figures as PNG)
   are stored in the notebook. This lightweight executor needs nothing but the standard
-  library and matplotlib; the CI re-executes the shipped notebooks with ``jupyter nbconvert
-  --execute`` (see ``.github/workflows/ci.yml``), which is the authoritative check.
+  library and matplotlib; the CI re-executes the shipped notebooks with nbval
+  (``pytest --nbval-lax``, see ``.github/workflows/ci.yml``), which is the authoritative check.
 
 Conventions of the source files
 -------------------------------

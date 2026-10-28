@@ -215,20 +215,24 @@ def validate_records(
     return validate_transactions(pd.DataFrame(rows))
 
 
-def sample_validate(df: pd.DataFrame, n: int = 1000, seed: int = 0) -> int:
+def sample_validate(df: pd.DataFrame, n: int | None = 1000, seed: int = 0) -> int:
     """Run the Pydantic model on a random sample of rows; return the number checked.
 
     Row-level Pydantic validation is too slow for millions of rows, so bulk validation
     is vectorised in :func:`validate_transactions` and this helper offers a cheap
-    additional spot check.
+    additional spot check (``n=None`` checks every row, as the REST API does). An invalid row
+    raises :class:`SchemaError` naming its ``tx_id``.
     """
     if len(df) == 0:
         return 0
-    sample = df.sample(min(n, len(df)), random_state=seed)
+    sample = df if n is None or n >= len(df) else df.sample(n, random_state=seed)
     cols = [c for c in Transaction.model_fields if c in sample.columns]
-    for rec in sample[cols].to_dict("records"):
+    for tx_id, rec in zip(sample.index, sample[cols].to_dict("records")):
         rec = {k: (None if isinstance(v, float) and np.isnan(v) else v) for k, v in rec.items()}
         if rec.get("label") is not None:
             rec["label"] = int(rec["label"])
-        Transaction.model_validate(rec)
+        try:
+            Transaction.model_validate(rec)
+        except ValueError as exc:  # pydantic.ValidationError
+            raise SchemaError(f"transaction {tx_id!r} is invalid: {exc}") from exc
     return len(sample)

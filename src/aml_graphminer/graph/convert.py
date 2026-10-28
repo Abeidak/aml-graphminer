@@ -104,7 +104,7 @@ def nx_to_pyg(
     graph: nx.Graph,
     node_attrs: Sequence[str] = (),
     edge_attrs: Sequence[str] = (),
-) -> Data:  # pragma: no cover - needs torch
+) -> Data:
     """NetworkX → ``torch_geometric.data.Data`` (``data.node_names`` keeps the account ids)."""
     torch = require("torch", "gnn", "PyG conversion")
     data_mod = require("torch_geometric.data", "gnn", "PyG conversion")
@@ -128,7 +128,7 @@ def pyg_to_nx(
     node_attr_names: Sequence[str] | None = None,
     edge_attr_names: Sequence[str] | None = None,
     multigraph: bool = False,
-) -> nx.DiGraph | nx.MultiDiGraph:  # pragma: no cover - needs torch
+) -> nx.DiGraph | nx.MultiDiGraph:
     """``torch_geometric.data.Data`` → NetworkX directed graph."""
     names = node_names if node_names is not None else getattr(data, "node_names", None)
     x = data.x.detach().cpu().numpy() if getattr(data, "x", None) is not None else None

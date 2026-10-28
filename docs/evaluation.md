@@ -9,7 +9,9 @@ specification:
 2. one `FeaturePipeline` fitted on the training split; all models share its features;
 3. for every model and seed: train, score validation and test, choose the **threshold on
    validation**, report metrics on **test**;
-4. deterministic models (the motif scanner) run once, stochastic ones once per seed;
+4. deterministic models (the motif scanner) run once, stochastic ones once per seed; the motif
+   scanner scores each slice with the `lookback` period before it as unlabelled context
+   ({doc}`patterns`), and `hybrid-<model>` stacks a model with the scanner on validation;
 5. results are aggregated as mean ± standard deviation over seeds.
 
 ```python

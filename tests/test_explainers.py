@@ -306,3 +306,22 @@ def test_attribute_importance_with_a_real_detector(synth_df):
         "sender_bank",
         "receiver_bank",
     }
+
+
+def test_explain_alerts_shares_one_scan_and_ranks_by_score(synth_df, tmp_path):
+    from aml_graphminer.detectors.bundle import MotifDetector
+    from aml_graphminer.explainers import explain_alerts
+
+    detector = MotifDetector.fit(synth_df)
+    explanations = explain_alerts(detector, synth_df, top=4, out_dir=tmp_path / "case")
+    assert 0 < len(explanations) <= 4
+    scores = [e.score for e in explanations]
+    assert scores == sorted(scores, reverse=True) and min(scores) >= detector.threshold
+    index = (tmp_path / "case" / "index.csv").read_text(encoding="utf-8")
+    assert index.startswith("rank,tx_id,score,method") and "patterns" in index
+    everything = explain_alerts(detector, synth_df, top=2, method="occlusion", only_alerts=False)
+    assert len(everything) == 2 and everything[0].method == "occlusion"
+    with pytest.raises(ConfigError):
+        explain_alerts(detector, synth_df, top=0)
+    with pytest.raises(ConfigError):
+        explain_alerts(detector, synth_df, method="nope")

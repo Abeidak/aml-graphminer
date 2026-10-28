@@ -15,7 +15,7 @@ from .. import __version__
 from ..detectors.bundle import MotifDetector, load_detector
 from ..exceptions import AMLGraphMinerError, ConfigError
 from ..explainers import available_methods, explain_transaction
-from ..ingestion import read_transactions
+from ..ingestion import read_transactions, sample_validate
 
 Record = Mapping[str, Any]
 
@@ -43,7 +43,9 @@ class ScoringService:
             raise ConfigError(f"no {what} provided")
         if len(records) > MAX_TRANSACTIONS:
             raise ConfigError(f"too many {what}: {len(records)} > {MAX_TRANSACTIONS}")
-        return read_transactions([dict(r) for r in records], strict=True)
+        df = read_transactions([dict(r) for r in records], strict=True)
+        sample_validate(df, n=None)  # every record also goes through the Pydantic model
+        return df
 
     # ------------------------------------------------------------------ endpoints
     def health(self) -> dict[str, Any]:

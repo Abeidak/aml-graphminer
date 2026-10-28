@@ -27,8 +27,14 @@ class TransactionIn(BaseModel):
     receiver_bank: str = ""
 
 
+RECORDS_HELP = (
+    "Transactions with the canonical column names (schema TransactionIn) or the IBM AML ones; "
+    "every record is validated with the Pydantic Transaction model."
+)
+
+
 class ScoreRequest(BaseModel):
-    transactions: list[dict[str, Any]] = Field(min_length=1)
+    transactions: list[dict[str, Any]] = Field(min_length=1, description=RECORDS_HELP)
     context: list[dict[str, Any]] | None = Field(
         default=None, description="Earlier transactions used as graph context (not scored)."
     )
@@ -50,7 +56,7 @@ class ScoreResponse(BaseModel):
 
 
 class ExplainRequest(BaseModel):
-    transactions: list[dict[str, Any]] = Field(min_length=1)
+    transactions: list[dict[str, Any]] = Field(min_length=1, description=RECORDS_HELP)
     row: int = Field(ge=0, description="Position of the transaction to explain.")
     method: str = Field(
         default="auto",
@@ -61,7 +67,7 @@ class ExplainRequest(BaseModel):
 
 
 class ScanRequest(BaseModel):
-    transactions: list[dict[str, Any]] = Field(min_length=1)
+    transactions: list[dict[str, Any]] = Field(min_length=1, description=RECORDS_HELP)
     top: int = Field(default=20, ge=1, le=500)
 
 

@@ -67,7 +67,7 @@ def node_type_counts(graph: nx.MultiDiGraph) -> dict[str, int]:
     return counts
 
 
-def to_pyg_hetero(graph: nx.MultiDiGraph, feature_dim: int = 1) -> HeteroData:  # pragma: no cover
+def to_pyg_hetero(graph: nx.MultiDiGraph, feature_dim: int = 1) -> HeteroData:
     """Typed NetworkX graph → ``torch_geometric.data.HeteroData`` (constant node features)."""
     torch = require("torch", "gnn", "heterogeneous graphs")
     hetero_mod = require("torch_geometric.data", "gnn", "heterogeneous graphs")

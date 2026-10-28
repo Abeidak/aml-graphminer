@@ -6,7 +6,13 @@ import importlib
 from typing import TYPE_CHECKING, Any
 
 from .base import EdgeImportance, Explanation, FeatureImportance, NodeImportance
-from .dispatch import EXPLAIN_METHODS, available_methods, default_method, explain_transaction
+from .dispatch import (
+    EXPLAIN_METHODS,
+    available_methods,
+    default_method,
+    explain_alerts,
+    explain_transaction,
+)
 from .occlusion import OcclusionExplainer
 from .patterns import PATTERN_DESCRIPTIONS, describe_alert, explain_with_patterns
 from .scorers import ScoreFn, detector_score_fn, pattern_score_fn, tabular_score_fn
@@ -59,6 +65,7 @@ __all__ = [
     "default_method",
     "describe_alert",
     "detector_score_fn",
+    "explain_alerts",
     "explain_transaction",
     "explain_with_patterns",
     "pattern_score_fn",

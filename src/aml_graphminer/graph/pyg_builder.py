@@ -18,7 +18,7 @@ def to_pyg_data(
     rows: np.ndarray | None = None,
     bidirectional: bool = True,
     with_edge_attr: bool = False,
-) -> Data:  # pragma: no cover - needs torch
+) -> Data:
     """Build the message-passing graph from the transactions flagged by ``rows``.
 
     * nodes = accounts, ``x`` = node features;

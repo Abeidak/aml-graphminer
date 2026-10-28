@@ -42,6 +42,11 @@ plot_explanation(exp, path="why.png")
 amlgm explain runs/hgb data/Synth-Small_Trans.csv --tx 1234 --method occlusion --plot why.png --out why.json
 ```
 
+Many alerts at once (a case file for an investigator): `explain_alerts(detector, df, top=20,
+out_dir="case/")` scores the table once, shares the neighbourhood index (and the scan or the
+trained PGExplainer) across explanations and writes one JSON + Markdown file per alert with an
+`index.csv` and a `README.md` table — `amlgm explain runs/sage data.csv --top 20 --out-dir case/`.
+
 ## Reading an occlusion explanation
 
 * **Edges** — each neighbouring transaction is removed in turn from the context and the score is

@@ -21,7 +21,10 @@ import numpy as np
 import pandas as pd
 
 from ..detectors.baselines import BASELINE_KINDS, TabularBaseline
+from ..detectors.hybrid import INPUTS as STACK_INPUTS
+from ..detectors.hybrid import apply_stacker, fit_stacker
 from ..detectors.patterns import PatternConfig, PatternScanner, pattern_recall_table
+from ..detectors.patterns.scanner import lookback_history
 from ..exceptions import ConfigError
 from ..features.pipeline import FeatureConfig, FeaturePipeline, FeatureSet
 from ..tracking import Tracker
@@ -101,7 +104,9 @@ def run_benchmark(
     models:
         Any of ``"patterns"``, ``"rf"``, ``"hgb"``, ``"xgb"``, ``"logreg"``, ``"gcn"``,
         ``"sage"``, ``"gat"`` and ``"gae"`` (unsupervised graph auto-encoder, encoder
-        ``gnn_config.kind``). GNNs need the ``gnn`` extra.
+        ``gnn_config.kind``), and ``"hybrid-<model>"``: that model stacked with the motif scanner
+        by a logistic regression fitted on the validation slice (scores of the model and of the
+        scanner are reused when they are also requested). GNNs need the ``gnn`` extra.
     seeds:
         Seeds for the stochastic models (the pattern scanner is deterministic and runs once).
     gnn_config:
@@ -110,9 +115,12 @@ def run_benchmark(
         Append the account-level features of sender and receiver to the transaction
         features of the tabular baselines (``False`` → edge features only).
     """
-    unknown = [m for m in models if m not in ALL_MODELS]
+    unknown = [m for m in models if m not in ALL_MODELS and _hybrid_base(m) is None]
     if unknown:
-        raise ConfigError(f"unknown model(s) {unknown}; available: {ALL_MODELS}")
+        raise ConfigError(
+            f"unknown model(s) {unknown}; available: {ALL_MODELS} and hybrid-<model> "
+            "(a model stacked with the motif scanner)"
+        )
     tracker = tracker or Tracker()
     masks = temporal_split(df, fractions)
     y = _validate_inputs(df, masks)
@@ -135,36 +143,58 @@ def run_benchmark(
     fitted: dict[str, Any] = {"pipeline": pipeline}
     per_pattern: pd.DataFrame | None = None
 
+    computed: dict[tuple[str, int], tuple[np.ndarray, np.ndarray, dict[str, Any]]] = {}
+
+    def run(model: str, seed: int) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+        """Validation / test scores of one model and seed (each computed once)."""
+        nonlocal per_pattern
+        key = (model, seeds[0] if model == "patterns" else seed)
+        if key in computed:
+            return computed[key]
+        set_seed(seed)
+        base = _hybrid_base(model)
+        if base is not None:
+            base_val, base_test, _ = run(base, seed)
+            motif_val, motif_test, _ = run("patterns", seed)
+            coef, intercept = fit_stacker(y[masks["val"]], base_val, motif_val)
+            scores_val = apply_stacker(coef, intercept, base_val, motif_val)
+            scores_test = apply_stacker(coef, intercept, base_test, motif_test)
+            extra: dict[str, Any] = {"stacker": dict(zip(STACK_INPUTS, np.round(coef, 4)))}
+            fitted[model] = {"coef": coef, "intercept": intercept}
+        elif model == "patterns":
+            scores_val, scores_test, extra = _run_patterns(df, masks, pattern_config)
+            per_pattern = extra.pop("per_pattern", None)
+            fitted["patterns"] = extra.pop("scanner")
+        elif model in BASELINE_KINDS:
+            scores_val, scores_test, extra = _run_tabular(
+                model,
+                features,
+                y,
+                masks,
+                seed,
+                baseline_params.get(model, {}),
+                with_nodes=tabular_node_features,
+            )
+            fitted[model] = extra.pop("baseline")
+        elif model in UNSUPERVISED_KINDS:
+            scores_val, scores_test, extra = _run_gae(
+                df, features, masks, gnn_config, seed, tracker, pipeline.to_dict()
+            )
+            fitted[model] = extra.pop("trained", None)
+        else:
+            scores_val, scores_test, extra = _run_gnn(
+                model, df, features, masks, gnn_config, seed, tracker, pipeline.to_dict()
+            )
+            fitted[model] = extra.pop("trained", None)
+        computed[key] = (scores_val, scores_test, extra)
+        return computed[key]
+
     for model in models:
         run_seeds: Sequence[int] = (seeds[0],) if model == "patterns" else seeds
         for seed in run_seeds:
-            set_seed(seed)
             t0 = time.perf_counter()
-            if model == "patterns":
-                scores_val, scores_test, extra = _run_patterns(df, masks, pattern_config)
-                per_pattern = extra.pop("per_pattern", None)
-                fitted["patterns"] = extra.pop("scanner")
-            elif model in BASELINE_KINDS:
-                scores_val, scores_test, extra = _run_tabular(
-                    model,
-                    features,
-                    y,
-                    masks,
-                    seed,
-                    baseline_params.get(model, {}),
-                    with_nodes=tabular_node_features,
-                )
-                fitted[model] = extra.pop("baseline")
-            elif model in UNSUPERVISED_KINDS:
-                scores_val, scores_test, extra = _run_gae(
-                    df, features, masks, gnn_config, seed, tracker, pipeline.to_dict()
-                )
-                fitted[model] = extra.pop("trained", None)
-            else:
-                scores_val, scores_test, extra = _run_gnn(
-                    model, df, features, masks, gnn_config, seed, tracker, pipeline.to_dict()
-                )
-                fitted[model] = extra.pop("trained", None)
+            scores_val, scores_test, extra = run(model, seed)
+            extra = dict(extra)
             fit_seconds = time.perf_counter() - t0
             thr = best_threshold(y[masks["val"]], scores_val)
             metrics = compute_metrics(y[masks["test"]], scores_test, thr)
@@ -207,15 +237,30 @@ def run_benchmark(
 
 
 # --------------------------------------------------------------------------- runners
+def _hybrid_base(model: str) -> str | None:
+    """``"hybrid-hgb"`` → ``"hgb"`` (``None`` when ``model`` is not a valid hybrid name)."""
+    if not model.startswith("hybrid-"):
+        return None
+    base = model.removeprefix("hybrid-")
+    return base if base in ALL_MODELS and base != "patterns" else None
+
+
 def _run_patterns(
     df: pd.DataFrame, masks: dict[str, np.ndarray], config: PatternConfig | None
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
-    """Calibrate on the validation slice, scan validation and test slices independently."""
+    """Calibrate on the validation slice, then score the validation and test slices.
+
+    Each slice is scanned with the transactions of the ``lookback`` period before it as
+    unlabelled context (``PatternConfig.lookback``), as a deployed scanner would see them.
+    """
     scanner = PatternScanner(config)
     val_df, test_df = df[masks["val"]], df[masks["test"]]
-    scanner.fit_calibration(val_df)
-    val_scores, _ = scanner.scan(val_df).transaction_scores()
-    test_result = scanner.scan(test_df)
+    val_hist, test_hist = (
+        lookback_history(df, part, scanner.config.lookback) for part in (val_df, test_df)
+    )
+    scanner.fit_calibration(val_df, history=val_hist)
+    val_scores, _ = scanner.scan(val_df, val_hist).transaction_scores()
+    test_result = scanner.scan(test_df, test_hist)
     test_scores, _ = test_result.transaction_scores()
     extra: dict[str, Any] = {"scanner": scanner, "n_alerts": len(test_result)}
     if (test_df["pattern"] != "").any():

@@ -11,9 +11,10 @@ transactions accepts `--schema [auto|ibm|canonical]`, `--nrows N` and `--pattern
 | `amlgm eda DATA --out DIR` | exploratory data analysis: `EDA.md`, `summary.json`, figures | `--no-figures` |
 | `amlgm init-config [PATH]` | write the default YAML configuration | `--force` |
 | `amlgm scan DATA` | structural-motif and risk-community alerts (`alerts.csv`, `alerts.json`) | `--config`, `--calibrate`, `--out`, `--top` |
-| `amlgm train DATA --out DIR` | train and save a detector | `--model patterns\|rf\|hgb\|xgb\|logreg\|gcn\|sage\|gat\|gae`, `--epochs`, `--trainer torch\|lightning`, `--mlflow`, `--seed` |
+| `amlgm train DATA --out DIR` | train and save a detector | `--model patterns\|rf\|hgb\|xgb\|logreg\|gcn\|sage\|gat\|gae\|hybrid`, `--base MODEL_DIR` (hybrid), `--epochs`, `--trainer torch\|lightning`, `--mlflow`, `--seed` |
 | `amlgm score MODEL_DIR DATA` | score transactions with a saved detector | `--context FILE`, `--out scores.csv`, `--top` |
 | `amlgm explain MODEL_DIR DATA --tx ID` | explain one transaction | `--method auto\|patterns\|occlusion\|gnnexplainer\|pgexplainer\|captum\|attention`, `--hops`, `--max-edges`, `--out`, `--plot` |
+| `amlgm explain MODEL_DIR DATA --top K --out-dir DIR` | explain the K highest-scored alerts in one go (case file: one JSON + Markdown per alert, `index.csv`, `README.md`) | same `--method` / `--hops` / `--max-edges` |
 | `amlgm benchmark DATA` | motifs vs. tabular vs. GNNs vs. auto-encoder on a temporal split | `--models` (repeat), `--seeds` (repeat), `--out`, `--dataset-name`, `--mlflow` |
 | `amlgm elliptic DIR` | Elliptic node-classification benchmark | `--models`, `--seeds`, `--out` |
 | `amlgm serve [MODEL_DIR]` | REST API + web investigation interface (`/ui/`) | `--demo`, `--data FILE` (repeat), `--host`, `--port`, `--open-browser` |

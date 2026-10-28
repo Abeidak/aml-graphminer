@@ -97,3 +97,13 @@ def test_ibm_ids_with_leading_zeros_survive(tmp_path):
     out = read_transactions(path)
     assert out.loc[0, "sender"] == "10_800104D70"
     assert out.loc[0, "receiver"] == "1_80010E430"
+
+
+def test_polars_engine_reads_the_same_ibm_table_as_pandas(tmp_path, tiny_df):
+    pytest.importorskip("polars")
+    path = write_ibm_csv(tiny_df, tmp_path / "X-Small_Trans.csv")
+    by_pandas = read_transactions(path)
+    by_polars = read_transactions(path, engine="polars")
+    pd.testing.assert_frame_equal(by_polars, by_pandas, check_dtype=False)
+    assert by_polars["sender"].str.contains("_").all()  # bank ids kept as text ("0012" ...)
+    assert len(read_transactions(path, engine="polars", nrows=5)) == 5

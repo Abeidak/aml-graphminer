@@ -115,6 +115,32 @@ number of epochs small (2-5) and compare with the supervised models on the same 
 drawing conclusions.
 ```
 
+## Hybrid detector (model + motifs)
+
+`HybridDetector` stacks any trained detector with the motif scanner. On the **validation**
+slice it calibrates the motifs and fits a three-coefficient logistic regression on the model's
+logit, the calibrated motif score and a "motif fired" indicator; the test slice only measures
+the result (`metrics`), next to the base model alone and the motifs alone on exactly the same
+scores (`component_metrics`). The base model must have been trained on the training slice of the
+same temporal split — any detector saved by `amlgm train` qualifies, so no retraining is needed.
+
+```python
+from aml_graphminer.detectors.bundle import load_detector
+from aml_graphminer.detectors.hybrid import HybridDetector
+
+hybrid = HybridDetector.fit(df, load_detector("runs/sage"), config)  # config: PatternConfig
+hybrid.component_metrics  # {"base": {...}, "motifs": {...}} on the test slice
+hybrid.save("runs/hybrid-sage")  # base/ + motifs/ + the stacker in config.json
+```
+
+```bash
+amlgm train data/HI-Small_Trans.csv --model hybrid --base runs/sage --config configs/patterns.yaml --out runs/hybrid-sage
+```
+
+In `run_benchmark` the model `hybrid-<model>` (e.g. `hybrid-hgb`, `hybrid-sage`) does the same
+for every seed, reusing the scores of `<model>` and of `patterns` when they are also requested.
+A saved hybrid is served, scored and explained (occlusion) like any other detector.
+
 ## Choosing between them
 
 | situation | start with |
@@ -124,3 +150,4 @@ drawing conclusions.
 | labels, tabular data, want a strong simple model | `hgb` / `rf` |
 | labels, relational signal (mules, layering) matters | `sage` / `gat` |
 | must justify each decision to an auditor | motifs + occlusion explanations; use GNNs as a second opinion |
+| want the model's recall and the motifs' evidence in one score | `HybridDetector` (`--model hybrid --base ...`) |

@@ -117,12 +117,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[viz]" jupyter nbconvert nbclient ipykernel
-      - name: Execute (outputs are discarded; the committed ones come from scripts/py2nb.py)
-        run: |
-          for nb in notebooks/01_quickstart notebooks/02_ibm_aml_benchmark notebooks/03_explainability; do
-            jupyter nbconvert --to notebook --execute "$nb.ipynb" --output-dir "$RUNNER_TEMP/nb" --ExecutePreprocessor.timeout=900
-          done
+      - run: pip install -e ".[viz]" nbval ipykernel
+      - name: Execute every cell with nbval (fails on any error; outputs are not compared)
+        run: >-
+          pytest --nbval-lax --nbval-cell-timeout=900 -p no:cacheprovider
+          notebooks/01_quickstart.ipynb notebooks/02_ibm_aml_benchmark.ipynb
+          notebooks/03_explainability.ipynb
       - name: Notebooks are in sync with their sources
         run: |
           python scripts/py2nb.py notebooks/src/*.py --out "$RUNNER_TEMP/rebuilt"

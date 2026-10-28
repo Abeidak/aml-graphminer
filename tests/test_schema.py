@@ -109,3 +109,23 @@ def test_transaction_model_strips_and_converts():
 def test_sample_validate_counts_rows(tiny_df):
     assert sample_validate(tiny_df, n=50) == 50
     assert sample_validate(tiny_df.iloc[:0]) == 0
+
+
+def test_sample_validate_names_the_invalid_transaction(tiny_df):
+    assert sample_validate(tiny_df, n=None) == len(tiny_df)
+    bad = tiny_df.copy()
+    bad.loc[bad.index[3], "amount_received"] = -1.0  # not caught by the vectorised checks
+    with pytest.raises(SchemaError, match=f"transaction {bad.index[3]!r}"):
+        sample_validate(bad, n=None)
+
+
+def test_load_dataset_spot_checks_rows_with_pydantic(tmp_path, tiny_df, monkeypatch):
+    from aml_graphminer.ingestion import dataset
+
+    path = tmp_path / "t.csv"
+    tiny_df.to_csv(path)
+    checked = []
+    monkeypatch.setattr(dataset, "sample_validate", lambda df, n: checked.append(n) or n)
+    dataset.load_dataset(path)
+    dataset.load_dataset(path, check_sample=0)
+    assert checked == [1000]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -128,10 +129,107 @@ def explain_transaction(
     return explainer.fit(df, learn_from, index).explain(df, tx_id, index)
 
 
+def explain_alerts(
+    detector: Any,
+    df: pd.DataFrame,
+    top: int = 20,
+    method: str = "auto",
+    *,
+    hops: int | None = None,
+    max_edges: int = 80,
+    only_alerts: bool = True,
+    out_dir: str | Path | None = None,
+) -> list[Explanation]:
+    """Explain the ``top`` highest-scored transactions of ``df`` in one go (a case file).
+
+    The table is scored once, the neighbourhood index (and, for the motif scanner, the scan or,
+    for PGExplainer, the trained explainer) is shared by every explanation. With
+    ``only_alerts`` only transactions at or above the detector threshold are explained. With
+    ``out_dir`` every explanation is written as ``<rank>_tx<id>.json`` / ``.md`` next to an
+    ``index.csv`` and a ``README.md`` that list them.
+    """
+    if top < 1:
+        raise ConfigError("top must be at least 1")
+    if method not in EXPLAIN_METHODS:
+        raise ConfigError(f"unknown explanation method {method!r}; choose among {EXPLAIN_METHODS}")
+    method = default_method(detector) if method == "auto" else method
+    scores = detector.score(df).to_numpy()
+    order = np.argsort(-scores, kind="stable")
+    if only_alerts:
+        order = order[scores[order] >= detector.threshold]
+    chosen = [int(t) for t in df.index[order[:top]]]
+    index = TransactionIndex(df)
+    scan = detector.scanner.scan(df) if method == "patterns" and _is_motif(detector) else None
+    pg = None
+    if method == "pgexplainer" and chosen:
+        if not _is_supervised_gnn(detector):
+            raise ConfigError("method 'pgexplainer' needs a supervised GNN detector")
+        from . import gnn_explainers as gx
+
+        learn_from = [int(t) for t in df.index[np.argsort(-scores, kind="stable")]]
+        learn_from = list(dict.fromkeys([*chosen, *learn_from[:PG_TRAINING_ALERTS]]))
+        pg = gx.PGExplainerAdapter(detector.trained, hops=hops or 2, max_edges=max_edges)
+        pg.fit(df, learn_from, index)
+    explanations = []
+    for tx_id in chosen:
+        if pg is not None:
+            explanations.append(pg.explain(df, tx_id, index))
+        else:
+            explanations.append(
+                explain_transaction(
+                    detector,
+                    df,
+                    tx_id,
+                    method,
+                    hops=hops,
+                    max_edges=max_edges,
+                    index=index,
+                    scan=scan,
+                )
+            )
+    if out_dir is not None:
+        _write_case_file(Path(out_dir), explanations, method)
+    return explanations
+
+
+def _write_case_file(directory: Path, explanations: list[Explanation], method: str) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for rank, exp in enumerate(explanations, start=1):
+        stem = f"{rank:03d}_tx{exp.tx_id}"
+        (directory / f"{stem}.json").write_text(exp.to_json(), encoding="utf-8")
+        (directory / f"{stem}.md").write_text(exp.to_markdown() + "\n", encoding="utf-8")
+        rows.append(
+            {
+                "rank": rank,
+                "tx_id": exp.tx_id,
+                "score": exp.score,
+                "method": exp.method,
+                "patterns": ";".join(sorted({str(p.get("pattern", "")) for p in exp.patterns})),
+                "summary": exp.summary,
+                "file": f"{stem}.md",
+            }
+        )
+    table = pd.DataFrame(
+        rows, columns=["rank", "tx_id", "score", "method", "patterns", "summary", "file"]
+    )
+    table.to_csv(directory / "index.csv", index=False)
+    lines = [f"# Explained alerts ({len(rows)}, method `{method}`)", ""]
+    lines += ["| rank | transaction | score | patterns | summary |", "|---|---|---|---|---|"]
+    for r in rows:
+        score = "" if r["score"] is None else f"{r['score']:.3f}"
+        summary = str(r["summary"]).replace("|", "\\|")
+        lines.append(
+            f"| {r['rank']} | [{r['tx_id']}]({r['file']}) | {score} | {r['patterns']} | {summary} |"
+        )
+    (directory / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 __all__ = [
     "EXPLAIN_METHODS",
     "GNN_METHODS",
     "available_methods",
     "default_method",
+    "explain_alerts",
     "explain_transaction",
 ]

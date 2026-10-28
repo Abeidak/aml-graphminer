@@ -3,7 +3,7 @@ import pytest
 from aml_graphminer.api import ScoringService
 from aml_graphminer.api.service import MAX_TRANSACTIONS, error_payload
 from aml_graphminer.detectors.bundle import MotifDetector, TabularDetector
-from aml_graphminer.exceptions import ConfigError, ModelError
+from aml_graphminer.exceptions import ConfigError, ModelError, SchemaError
 
 FIELDS = (
     "timestamp",
@@ -143,3 +143,10 @@ def test_from_dir(tmp_path, synth_df):
 def test_error_payload_kinds():
     assert error_payload(ConfigError("x"))["error"] == "invalid_request"
     assert error_payload(RuntimeError("boom")) == {"error": "internal_error", "detail": "boom"}
+
+
+def test_every_api_record_is_validated_with_pydantic(services):
+    row = {"timestamp": "2022-09-01 10:00", "sender": "a", "receiver": "b", "amount": 5.0}
+    assert services["rf"].score([row])["n_transactions"] == 1
+    with pytest.raises(SchemaError, match="amount_received"):
+        services["rf"].score([{**row, "amount_received": -5.0}])

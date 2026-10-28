@@ -113,3 +113,38 @@ def test_pyg_conversion_when_torch_is_available(small):
     data = nx_to_pyg(g, edge_attrs=("count",))
     assert data.edge_index.shape == (2, 3) and data.edge_attr.shape == (3, 1)
     assert pyg_to_nx(data).number_of_edges() == 3
+
+
+def test_pyg_training_graph_keeps_only_the_requested_transactions(synth_df, synth_masks):
+    pytest.importorskip("torch_geometric")
+    from aml_graphminer.features.pipeline import FeaturePipeline
+    from aml_graphminer.graph import to_pyg_data
+
+    feats = FeaturePipeline().fit(synth_df, synth_masks["train"]).transform(synth_df)
+    rows = synth_masks["train"]
+    data = to_pyg_data(feats, rows, with_edge_attr=True)
+    n_train = int(rows.sum())
+    assert data.edge_index.shape == (2, 2 * n_train)  # every edge and its reverse
+    assert data.num_nodes == feats.n_nodes and data.x.shape[0] == feats.n_nodes
+    ids = data.edge_id.numpy()
+    assert set(ids.tolist()) == set(np.flatnonzero(rows).tolist())
+    assert data.edge_attr.shape == (2 * n_train, feats.edge.shape[1])
+    # forward edges follow the transactions' direction, reversed ones the opposite
+    first = int(ids[0])
+    assert data.edge_index[0, 0] == feats.src[first] and data.edge_index[1, 0] == feats.dst[first]
+    one_way = to_pyg_data(feats, bidirectional=False)
+    assert one_way.edge_index.shape == (2, feats.n_edges) and one_way.edge_attr is None
+
+
+def test_pyg_hetero_graph_has_typed_nodes_and_edges(small):
+    pytest.importorskip("torch_geometric")
+    from aml_graphminer.graph import to_pyg_hetero
+
+    data = to_pyg_hetero(build_hetero_networkx(small, account_types={"a": "company"}), 3)
+    assert set(data.node_types) == {"company", "account", "bank"}
+    assert data["account"].x.shape == (2, 3) and data["bank"].x.shape == (2, 3)
+    n_transfers = sum(
+        data[key].edge_index.shape[1] for key in data.edge_types if key[1] == "transfers"
+    )
+    n_held = sum(data[key].edge_index.shape[1] for key in data.edge_types if key[1] == "held_at")
+    assert n_transfers == 4 and n_held == 3

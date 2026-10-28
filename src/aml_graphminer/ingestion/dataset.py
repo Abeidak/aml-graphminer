@@ -11,6 +11,7 @@ from ..exceptions import IngestionError
 from ..utils import logger
 from .ibm_patterns import attach_patterns, read_ibm_patterns
 from .readers import read_transactions
+from .schema import sample_validate
 
 
 def find_patterns_file(path: str | Path) -> Path | None:
@@ -29,6 +30,7 @@ def load_dataset(
     schema: str = "auto",
     nrows: int | None = None,
     patterns_file: str | Path | bool | None = True,
+    check_sample: int = 1000,
     **kwargs: Any,
 ) -> pd.DataFrame:
     """Read ``path`` into the canonical schema and attach laundering-pattern names.
@@ -38,8 +40,15 @@ def load_dataset(
     patterns_file:
         ``True`` (default) → use the sibling ``*_Patterns.txt`` of an IBM file if it exists;
         ``False``/``None`` → do not attach patterns; a path → use that file.
+    check_sample:
+        Number of rows also validated one by one with the Pydantic
+        :class:`~aml_graphminer.ingestion.schema.Transaction` model
+        (:func:`~aml_graphminer.ingestion.schema.sample_validate`) after the vectorised checks;
+        ``0`` skips it.
     """
     df = read_transactions(path, schema=schema, nrows=nrows, **kwargs)
+    if check_sample:
+        sample_validate(df, check_sample)
     if patterns_file is True:
         patterns_path = find_patterns_file(path)
     elif patterns_file:

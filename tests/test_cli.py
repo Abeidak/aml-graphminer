@@ -305,3 +305,16 @@ def test_demo_model_is_trained_once(tmp_path, monkeypatch):
     assert (first / "config.json").exists() and load_detector(first).describe()["kind"] == "hgb"
     stamp = (first / "config.json").stat().st_mtime_ns
     assert _demo_model() == first and (first / "config.json").stat().st_mtime_ns == stamp
+
+
+def test_explain_top_alerts_writes_a_case_file(tmp_path, synth_df):
+    data = tmp_path / "t.csv"
+    synth_df.to_csv(data)
+    assert run("train", data, "--model", "patterns", "--out", tmp_path / "m").exit_code == 0
+    res = run("explain", tmp_path / "m", data, "--top", 3, "--out-dir", tmp_path / "case")
+    assert res.exit_code == 0, res.output
+    files = {p.name for p in (tmp_path / "case").iterdir()}
+    assert {"index.csv", "README.md"} <= files
+    assert len([f for f in files if f.endswith(".json")]) == res.output.count("tx ")
+    assert run("explain", tmp_path / "m", data).exit_code != 0  # neither --tx nor --top
+    assert run("explain", tmp_path / "m", data, "--tx", 1, "--top", 2).exit_code != 0

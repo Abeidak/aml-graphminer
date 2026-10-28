@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from ...exceptions import ConfigError
+from ...utils import parse_duration
 from .base import Alert, PatternDetector, TxArrays
 from .community import CommunityDetector
 from .config import PatternConfig
@@ -31,6 +32,22 @@ DETECTOR_REGISTRY: dict[str, DetectorFactory] = {
     "gather_scatter": lambda c: GatherScatterDetector(c.gather_scatter),
     "community": lambda c: CommunityDetector(c.community),
 }
+
+
+def lookback_history(
+    df: pd.DataFrame, part: pd.DataFrame, lookback: str | None
+) -> pd.DataFrame | None:
+    """Transactions of ``df`` in the ``lookback`` period before ``part`` (``None``: no context).
+
+    Used as unlabelled context when a time slice is scanned (:meth:`PatternScanner.scan`).
+    """
+    if lookback is None or part.empty:
+        return None
+    start = part["timestamp"].min()
+    earlier = (df["timestamp"] >= start - pd.Timedelta(seconds=parse_duration(lookback))) & (
+        df["timestamp"] < start
+    )
+    return df[earlier]
 
 
 def register_detector(name: str, factory: DetectorFactory) -> None:
@@ -174,34 +191,51 @@ class PatternScanner:
         }
         self.calibration: dict[str, float] = {}
 
-    def scan(self, df: pd.DataFrame) -> ScanResult:
-        """Run all detectors on a canonical, time-sorted transaction table."""
-        ctx = TxArrays.from_frame(df)
+    def scan(self, df: pd.DataFrame, history: pd.DataFrame | None = None) -> ScanResult:
+        """Run all detectors on a canonical, time-sorted transaction table.
+
+        ``history`` holds earlier transactions (their labels are never read): motifs that began
+        before ``df`` are then seen whole. Only the transactions of ``df`` are scored, and only
+        the alerts touching at least one of them are returned.
+        """
+        frame = df
+        if history is not None and len(history):
+            earlier = history[~history.index.isin(df.index)]
+            frame = pd.concat([earlier, df]).sort_values("timestamp", kind="stable")
+        types = self.config.transaction_types
+        if types is not None and "transaction_type" in frame.columns:
+            frame = frame[frame["transaction_type"].isin(types)]
+        ctx = TxArrays.from_frame(frame, self.config.currency)
         alerts: list[Alert] = []
         timings: dict[str, float] = {}
         for name, detector in self.detectors.items():
             t0 = time.perf_counter()
             alerts.extend(detector.detect(ctx))
             timings[name] = time.perf_counter() - t0
-        return ScanResult(alerts, ctx.tx_ids, timings, dict(self.calibration))
+        if history is not None and len(history):
+            own = pd.Index(df.index)
+            alerts = [a for a in alerts if (own.get_indexer(a.tx_ids) >= 0).any()]
+        return ScanResult(alerts, df.index.to_numpy(), timings, dict(self.calibration))
 
-    def fit_calibration(self, df: pd.DataFrame, prior: float = 1.0) -> dict[str, float]:
+    def fit_calibration(
+        self, df: pd.DataFrame, prior: float = 1.0, history: pd.DataFrame | None = None
+    ) -> dict[str, float]:
         """Learn the precision of every detector on a *labelled validation slice*.
 
         The precision of a pattern is the (Laplace-smoothed) share of the transactions its alerts
         cover that are labelled illicit. Calibrated scores ``precision x alert score`` let alerts
-        of different detectors be ranked on a common scale.
+        of different detectors be ranked on a common scale. Only the labels of ``df`` are used
+        (``history`` is unlabelled context, see :meth:`scan`).
         """
         if df["label"].isna().all():
             raise ConfigError("calibration needs labelled transactions")
-        result = self.scan(df)
+        result = self.scan(df, history)
         labels = df["label"].fillna(0).to_numpy()
         index = pd.Index(result.tx_ids)
         by_pattern: dict[str, set[int]] = {}
         for alert in result.alerts:
-            by_pattern.setdefault(alert.pattern, set()).update(
-                index.get_indexer(alert.tx_ids).tolist()
-            )
+            pos = index.get_indexer(alert.tx_ids)
+            by_pattern.setdefault(alert.pattern, set()).update(pos[pos >= 0].tolist())
         self.calibration = {}
         for name in self.detectors:
             covered = np.array(sorted(by_pattern.get(name, set())), dtype=int)

@@ -4,9 +4,7 @@
     "patterns"
   ],
   "seeds": [
-    0,
-    1,
-    2
+    0
   ],
   "fractions": [
     0.6,
@@ -32,17 +30,17 @@
       "min_counterparties": 3,
       "window": "120h",
       "min_total_amount": 0.0,
-      "min_burst_ratio": 3.0
+      "min_burst_ratio": 0.0
     },
     "fan_out": {
       "enabled": true,
       "min_counterparties": 5,
-      "window": "24h",
+      "window": "120h",
       "min_total_amount": 0.0,
       "min_burst_ratio": 3.0
     },
     "smurfing": {
-      "enabled": true,
+      "enabled": false,
       "structuring": true,
       "split": true,
       "threshold": 10000.0,
@@ -59,10 +57,10 @@
     "cycle": {
       "enabled": true,
       "min_length": 3,
-      "max_length": 6,
+      "max_length": 12,
       "max_span": "4d",
       "min_hop_ratio": 0.5,
-      "max_hop_ratio": 1.02,
+      "max_hop_ratio": 1.5,
       "cross_currency": false,
       "max_cycles": 100000,
       "max_branching": 100,
@@ -72,7 +70,7 @@
       "enabled": true,
       "min_intermediaries": 3,
       "hop_window": "72h",
-      "max_span": "3d",
+      "max_span": "5d",
       "min_hop_ratio": 0.8,
       "max_hop_ratio": 100.0,
       "max_hub_degree": 30
@@ -84,23 +82,32 @@
       "gather_window": "72h",
       "scatter_window": "24h",
       "min_conservation": 0.7,
-      "max_conservation": 1.05,
+      "max_conservation": 100.0,
       "min_burst_ratio": 3.0,
-      "min_activity_share": 0.3
+      "min_activity_share": 0.0
     },
     "community": {
       "enabled": true,
       "min_size": 3,
       "max_size": 40,
       "min_flow_through": 0.6,
-      "max_member_degree": 20,
+      "max_member_degree": 40,
       "min_relays": 1,
       "min_internal_tx": 3,
       "min_internal_share": 0.4,
-      "max_span": "5d",
+      "max_span": "7d",
       "resolution": 1.0,
       "seed": 0
-    }
+    },
+    "currency": {
+      "convert": true,
+      "reference": "US Dollar",
+      "rates": null
+    },
+    "lookback": "4d",
+    "transaction_types": [
+      "ACH"
+    ]
   },
   "gnn": null,
   "split_sizes": {

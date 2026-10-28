@@ -5,13 +5,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pandas as pd
 
 from ...features.network import index_accounts
 from ...utils import epoch_seconds
+
+if TYPE_CHECKING:
+    from .config import CurrencyConfig
 
 
 @dataclass
@@ -31,9 +34,18 @@ class TxArrays:
     tx_ids: np.ndarray  # values of df.index
     timestamps: pd.Series
     label: np.ndarray
+    # value of one unit of each currency in the reference currency (NaN: unknown) and the paid /
+    # received amounts converted with it (NaN where the rate is unknown)
+    fx: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    paid_ref: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    recv_ref: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    # amounts on one scale: the reference currency when the rate is known, raw otherwise
+    paid_c: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    recv_c: np.ndarray = field(default_factory=lambda: np.zeros(0))
 
     @classmethod
-    def from_frame(cls, df: pd.DataFrame) -> TxArrays:
+    def from_frame(cls, df: pd.DataFrame, currency: CurrencyConfig | None = None) -> TxArrays:
+        """Build the view; ``currency`` controls the conversion to a reference currency."""
         ts = epoch_seconds(df["timestamp"])
         if len(ts) > 1 and (ts[1:] < ts[:-1]).any():
             raise ValueError("the transaction table must be sorted by timestamp")
@@ -42,20 +54,44 @@ class TxArrays:
             pd.concat([df["currency"], df["currency_received"]], ignore_index=True)
         )
         m = len(df)
+        paid = df["amount"].to_numpy(dtype="float64")
+        recv = df["amount_received"].to_numpy(dtype="float64")
+        cur_paid = np.asarray(codes[:m], dtype="int64")
+        cur_recv = np.asarray(codes[m:], dtype="int64")
+        currency_names = np.asarray(uniques, dtype=object)
+        if currency is None or currency.convert:
+            fx = exchange_rates(
+                paid,
+                recv,
+                cur_paid,
+                cur_recv,
+                currency_names,
+                reference=None if currency is None else currency.reference,
+                known=None if currency is None else currency.rates,
+            )
+        else:
+            fx = np.full(len(currency_names), np.nan)
+        rate_paid = fx[cur_paid] if len(fx) else np.full(m, np.nan)
+        rate_recv = fx[cur_recv] if len(fx) else np.full(m, np.nan)
         return cls(
             ts=ts,
             src=src,
             dst=dst,
             n_nodes=n,
             names=names,
-            paid=df["amount"].to_numpy(dtype="float64"),
-            recv=df["amount_received"].to_numpy(dtype="float64"),
-            cur_paid=np.asarray(codes[:m], dtype="int64"),
-            cur_recv=np.asarray(codes[m:], dtype="int64"),
-            currency_names=np.asarray(uniques, dtype=object),
+            paid=paid,
+            recv=recv,
+            cur_paid=cur_paid,
+            cur_recv=cur_recv,
+            currency_names=currency_names,
             tx_ids=df.index.to_numpy(),
             timestamps=df["timestamp"].reset_index(drop=True),
             label=df["label"].to_numpy(dtype="float64"),
+            fx=fx,
+            paid_ref=paid * rate_paid,
+            recv_ref=recv * rate_recv,
+            paid_c=np.where(np.isfinite(rate_paid), paid * rate_paid, paid),
+            recv_c=np.where(np.isfinite(rate_recv), recv * rate_recv, recv),
         )
 
     def __len__(self) -> int:
@@ -64,6 +100,91 @@ class TxArrays:
     def currency_code(self, name: str) -> int:
         hits = np.flatnonzero(self.currency_names == name)
         return int(hits[0]) if len(hits) else -1
+
+    def hop_amounts(
+        self, received_rows: np.ndarray, paid_rows: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """What ``received_rows`` brought in and ``paid_rows`` forwarded, on a common scale.
+
+        Pairs in the same currency keep their raw amounts (exact); pairs in two currencies are
+        compared in the reference currency when both rates are known. Returns
+        ``(received, forwarded, comparable)``.
+        """
+        same = self.cur_recv[received_rows] == self.cur_paid[paid_rows]
+        r_ref, p_ref = self.recv_ref[received_rows], self.paid_ref[paid_rows]
+        converted = ~same & np.isfinite(r_ref) & np.isfinite(p_ref)
+        received = np.where(same, self.recv[received_rows], r_ref)
+        forwarded = np.where(same, self.paid[paid_rows], p_ref)
+        return received, forwarded, same | converted
+
+
+def exchange_rates(
+    paid: np.ndarray,
+    recv: np.ndarray,
+    cur_paid: np.ndarray,
+    cur_recv: np.ndarray,
+    currency_names: np.ndarray,
+    reference: str | None = None,
+    known: dict[str, float] | None = None,
+) -> np.ndarray:
+    """Value of one unit of every currency, in units of the ``reference`` currency.
+
+    A payment of ``paid`` units of currency ``a`` that arrives as ``recv`` units of ``b`` reveals
+    ``rate(a) / rate(b) = recv / paid``. The median log-ratio of every exchanged pair is taken
+    (robust to the odd rounded amount) and the log-rates are solved by weighted least squares
+    with ``rate(reference) = 1``. A currency never exchanged with the reference, directly or
+    through other currencies, gets ``NaN`` (its amounts are not converted). ``reference``
+    defaults to the most used payment currency; ``known`` rates (units of the reference per
+    unit) replace the inferred ones.
+    """
+    k = len(currency_names)
+    names = [str(c) for c in currency_names]
+    if k == 0:
+        return np.zeros(0)
+    if reference not in names:
+        counts = np.bincount(cur_paid, minlength=k) if len(cur_paid) else np.ones(k)
+        reference = names[int(np.argmax(counts))]
+    ref = names.index(str(reference))
+    rates = np.full(k, np.nan)
+    rates[ref] = 0.0  # log-rate
+    cross = (cur_paid != cur_recv) & (paid > 0) & (recv > 0)
+    if cross.any():
+        pair = cur_paid[cross] * k + cur_recv[cross]
+        grouped = pd.Series(np.log(recv[cross] / paid[cross])).groupby(pair)
+        median, size = grouped.median(), grouped.size()
+        a, b = np.divmod(median.index.to_numpy(dtype="int64"), k)
+        # currencies connected to the reference through exchanged pairs
+        reach, frontier = {ref}, [ref]
+        while frontier:
+            c = frontier.pop()
+            linked = np.r_[b[a == c], a[b == c]].tolist()
+            for other in linked:
+                if other not in reach:
+                    reach.add(other)
+                    frontier.append(other)
+        unknown = sorted(reach - {ref})
+        if unknown:
+            col = {c: i for i, c in enumerate(unknown)}
+            keep = np.array([x in reach for x in a.tolist()])
+            design = np.zeros((int(keep.sum()), len(unknown)))
+            for i, (x, y) in enumerate(zip(a[keep].tolist(), b[keep].tolist())):
+                if x in col:
+                    design[i, col[x]] += 1.0
+                if y in col:
+                    design[i, col[y]] -= 1.0
+            weight = np.sqrt(size.to_numpy(dtype="float64")[keep])
+            solution = np.linalg.lstsq(
+                design * weight[:, None], median.to_numpy()[keep] * weight, rcond=None
+            )[0]
+            for c, i in col.items():
+                rates[c] = solution[i]
+    rates = np.exp(rates)
+    if known:
+        scale = float(known.get(names[ref], 1.0))
+        for name, value in known.items():
+            if name in names and value > 0:
+                rates[names.index(name)] = float(value) / scale
+    return rates
 
 
 @dataclass
@@ -131,7 +252,7 @@ class PatternDetector(ABC):
         amount: np.ndarray | None = None,
     ) -> Alert:
         rows = np.asarray(rows)
-        amounts = ctx.paid[rows] if amount is None else amount
+        amounts = ctx.paid_c[rows] if amount is None else amount
         return Alert(
             pattern=pattern,
             score=float(np.clip(score, 0.0, 1.0)),

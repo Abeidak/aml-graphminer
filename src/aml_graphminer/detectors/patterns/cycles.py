@@ -20,7 +20,9 @@ class CycleDetector(PatternDetector):
     * ``e_i`` pays from ``v_i`` to ``v_{i+1}`` and ``e_k`` returns to ``v_1`` (all nodes distinct);
     * times strictly increase along the path and the whole loop lasts at most ``max_span``;
     * what an account forwards is close to what it received (``min_hop_ratio`` ≤ paid / received
-      ≤ ``max_hop_ratio``; the check is skipped when the two amounts are in different currencies).
+      ≤ ``max_hop_ratio``). Amounts in two currencies are compared in the reference currency
+      (``currency`` section of the configuration); a hop whose rates are unknown is rejected,
+      or accepted unchecked with ``cross_currency``.
 
     Because time must increase, a given cycle is discovered **once**, from its earliest
     transaction. The search is restricted to strongly-connected components of the aggregated
@@ -46,6 +48,7 @@ class CycleDetector(PatternDetector):
         order = keep[np.lexsort((ctx.ts[keep], ctx.src[keep]))]
         o_src, o_dst, o_ts = ctx.src[order], ctx.dst[order], ctx.ts[order]
         o_paid, o_recv = ctx.paid[order], ctx.recv[order]
+        o_paid_ref, o_recv_ref = ctx.paid_ref[order], ctx.recv_ref[order]
         o_cp, o_cr = ctx.cur_paid[order], ctx.cur_recv[order]
         indptr = np.zeros(ctx.n_nodes + 1, dtype="int64")
         np.add.at(indptr, o_src + 1, 1)
@@ -76,14 +79,15 @@ class CycleDetector(PatternDetector):
             if left >= right:
                 return
             cand = np.arange(left, min(right, left + cfg.max_branching))
-            received = o_recv[last]
             same_currency = o_cp[cand] == o_cr[last]
-            ratio_ok = (o_paid[cand] >= cfg.min_hop_ratio * received) & (
-                o_paid[cand] <= cfg.max_hop_ratio * received
+            # NaN (unknown rate) fails both comparisons: such hops are not comparable
+            received = np.where(same_currency, o_recv[last], o_recv_ref[last])
+            forwarded = np.where(same_currency, o_paid[cand], o_paid_ref[cand])
+            accepted = (forwarded >= cfg.min_hop_ratio * received) & (
+                forwarded <= cfg.max_hop_ratio * received
             )
-            accepted = same_currency & ratio_ok
             if cfg.cross_currency:
-                accepted |= ~same_currency
+                accepted |= ~same_currency & ~(np.isfinite(received) & np.isfinite(forwarded))
             ok = cand[accepted]
             for e in ok.tolist():
                 nxt = int(o_dst[e])
@@ -136,7 +140,7 @@ class CycleDetector(PatternDetector):
     ) -> None:
         rows = order[np.array(path)]
         span = float(ctx.ts[rows[-1]] - ctx.ts[rows[0]])
-        first, last = float(ctx.paid[rows[0]]), float(ctx.paid[rows[-1]])
+        first, last = float(ctx.paid_c[rows[0]]), float(ctx.paid_c[rows[-1]])
         conservation = float(np.clip(last / first, 0.0, 1.0)) if first > 0 else 0.0
         speed = float(np.clip(1.0 - span / max_span, 0.0, 1.0))
         short = 1.0 / (len(rows) - 1)
@@ -156,6 +160,6 @@ class CycleDetector(PatternDetector):
                     "amount_retained": conservation,
                     "cycle": [str(ctx.names[n]) for n in nodes] + [str(ctx.names[nodes[0]])],
                 },
-                amount=ctx.paid[rows[:1]],
+                amount=ctx.paid_c[rows[:1]],
             )
         )

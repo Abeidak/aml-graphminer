@@ -44,8 +44,8 @@ class CommunityDetector(PatternDetector):
         if not cfg.enabled or len(ctx) == 0:
             return []
         n = ctx.n_nodes
-        out_vol = np.bincount(ctx.src, weights=ctx.paid, minlength=n)
-        in_vol = np.bincount(ctx.dst, weights=ctx.recv, minlength=n)
+        out_vol = np.bincount(ctx.src, weights=ctx.paid_c, minlength=n)
+        in_vol = np.bincount(ctx.dst, weights=ctx.recv_c, minlength=n)
         degree = np.bincount(ctx.src, minlength=n) + np.bincount(ctx.dst, minlength=n)
         largest = np.maximum(in_vol, out_vol)
         flow = np.divide(np.minimum(in_vol, out_vol), largest, out=np.zeros(n), where=largest > 0)
@@ -81,7 +81,7 @@ class CommunityDetector(PatternDetector):
         u = np.minimum(ctx.src[edges], ctx.dst[edges])
         v = np.maximum(ctx.src[edges], ctx.dst[edges])
         weights = (
-            pd.DataFrame({"u": u, "v": v, "w": ctx.paid[edges]}).groupby(["u", "v"])["w"].sum()
+            pd.DataFrame({"u": u, "v": v, "w": ctx.paid_c[edges]}).groupby(["u", "v"])["w"].sum()
         )
         graph = nx.Graph()
         graph.add_weighted_edges_from(
@@ -123,7 +123,7 @@ class CommunityDetector(PatternDetector):
         span = float(ctx.ts[rows].max() - ctx.ts[rows].min())
         if span > max_span:
             return None
-        internal_amount = float(ctx.paid[rows].sum())
+        internal_amount = float(ctx.paid_c[rows].sum())
         outgoing = float(out_vol[members].sum())
         share = internal_amount / outgoing if outgoing > 0 else 0.0
         if share < cfg.min_internal_share:

@@ -78,11 +78,44 @@ Important parameters:
   must exceed; it keeps payroll accounts and merchants from alerting continuously.
 * `min_hop_ratio` / `max_hop_ratio` (cycle, scatter-gather) — allowed fraction of the received
   amount that is forwarded on the next hop (fees, small losses).
-* `cross_currency` — amounts in different currencies cannot be compared, so such hops are
-  rejected by default.
+* `cross_currency` — a hop between two currencies whose exchange rate is unknown cannot be
+  checked, so it is rejected by default (see *Currencies* below).
 * `max_cycles`, `max_branching`, `max_expansions` — search budgets. If a budget is exhausted the
   cycle detector logs a warning and sets `detector.truncated = True`; results are then incomplete and
   you should tighten the window rather than ignore the warning.
+
+## Currencies, history and payment formats
+
+Three scanner-wide settings sit next to the detector sections:
+
+```yaml
+patterns:
+  currency: {convert: true, reference: US Dollar, rates: null}
+  lookback: 4d
+  transaction_types: null        # e.g. [ACH]
+```
+
+* **`currency`** — laundering chains often change currency between hops: an account receives
+  dollars and forwards euros. Every amount is therefore also expressed in the `reference`
+  currency before the cycle, scatter-gather, gather-scatter, split-smurfing and community
+  detectors compare or add amounts. The rates are inferred from the table itself: a payment of
+  `paid` units of currency *a* received as `recv` units of *b* gives `rate(a) / rate(b) =
+  recv / paid`; the median of every exchanged pair is taken and the rates are solved by least
+  squares, through intermediate currencies when needed (`exchange_rates`). A currency never
+  exchanged with the reference keeps its raw amounts (its hops are not comparable); `rates`
+  (units of the reference per unit) overrides the inferred values. Alert amounts
+  (`total_amount`, evidence) are in the reference currency. `convert: false` restores the raw
+  amounts.
+* **`lookback`** — when a time slice is scored (validation and test slices of the benchmark,
+  `MotifDetector.fit`, `score` with a context), the transactions of this period before the slice
+  are given to the scanner as **unlabelled** context: a 3-day cycle that started before the slice
+  is then seen whole. Only the transactions of the slice are scored and only the alerts touching
+  them are returned (`PatternScanner.scan(df, history=...)`); the labels of the context are never
+  read, so this is what a deployed scanner sees, with no leakage.
+* **`transaction_types`** — only the listed payment formats are searched (the others keep a
+  score of 0). In the IBM AML simulator every laundering motif is made of ACH transfers
+  (`docs/limitations.md`), which is why the tuned `configs/patterns.yaml` sets `[ACH]`; this is a
+  property of that simulator, not a general rule, and should be re-examined on other data.
 
 ## Calibration
 

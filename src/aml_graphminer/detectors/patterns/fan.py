@@ -45,7 +45,7 @@ class _FanDetector(PatternDetector):
                 min_count=need,
             ):
                 sel = rows[i:j]
-                amount = ctx.paid[sel]
+                amount = ctx.paid_c[sel]
                 if amount.sum() < cfg.min_total_amount:
                     continue
                 counterparties = np.unique(other[sel])

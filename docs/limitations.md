@@ -5,13 +5,23 @@ real laundering, and the labels are exact, which real labels never are (real lab
 investigated cases and are biased towards what past systems flagged). Elliptic is a Bitcoin graph
 with anonymised features; conclusions do not transfer automatically to bank data.
 
-**Detectors.** The motif thresholds of `configs/patterns.yaml` were tuned on the validation
+**Detectors.** The motif settings of `configs/patterns.yaml` were tuned on the validation
 splits of IBM AML HI-Small and LI-Small (the package defaults were chosen for the synthetic
-generator). Even tuned, the motif scanner reaches a test PR-AUC of only 0.005 (HI-Small) and 0.001
-(LI-Small), far below the learned models (`benchmarks/results/REPORT.md`): only 62 % (HI) and 29 %
-(LI) of the laundering transactions belong to an annotated motif, the IBM motifs span several
-days and change currency at almost every hop (amounts are conserved only after conversion, which
-the detectors do not perform), and bipartite / stack / random motifs have no dedicated detector.
+generator). The tuned scanner reaches a test PR-AUC of 0.340 (HI-Small) and 0.147 (LI-Small),
+without any training (`benchmarks/results/REPORT.md`), still below the objective of 0.5 and below
+the best learned models on HI-Small. Three changes made this possible, each measured on the
+HI-Small validation slice: the IBM motifs change currency at almost every hop, so amounts are now
+compared in US dollars (validation PR-AUC 0.053 → 0.054); they last 27–80 h, longer than the
+≈ 51 h validation slice, so each slice is scanned with the 4 unlabelled days before it (→ 0.085);
+every laundering attempt annotated in the training slice is an ACH transfer, so the search is
+restricted to ACH (→ 0.162; the full retuning reaches 0.258). Before these changes the cycle
+detector recovered none of the annotated test cycles; it now recovers 81 % of them on HI-Small.
+The ACH restriction is a property of the IBM simulator, chosen on validation data: on other data,
+leave `transaction_types` empty or re-examine it. Only 62 % (HI) and 29 % (LI) of the laundering
+transactions belong to an annotated motif, and bipartite / stack / random motifs have no dedicated
+detector. The hybrid detector (model + motifs) improves the HI-Small test PR-AUC of the random
+forest, HistGradientBoosting and GraphSAGE models (0.519 → 0.562, 0.484 → 0.545, 0.504 → 0.527;
+one seed) but not on LI-Small (`benchmarks/results_parts/hybrid/README.md`).
 Learned models inherit the biases of their labels. The cycle search is bounded by
 budgets and can be incomplete on dense graphs (a warning is logged and `truncated` is set). The
 risk-community detector ignores busy accounts (`max_member_degree`) and only sees groups whose

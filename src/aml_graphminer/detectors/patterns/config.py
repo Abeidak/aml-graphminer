@@ -68,8 +68,8 @@ class CycleConfig(_Section):
     max_span: str = "7d"
     min_hop_ratio: float = Field(default=0.8, gt=0, le=1)
     max_hop_ratio: float = Field(default=1.02, ge=1)
-    # Amounts in different currencies cannot be compared: by default such hops are rejected
-    # (set to True to accept them without any amount check — expect many more false alerts).
+    # Amounts in two currencies are compared after conversion (``currency`` section); a hop whose
+    # rates are unknown is rejected, unless this is True (accepted without any amount check).
     cross_currency: bool = False
     max_cycles: int = Field(default=100_000, ge=1)
     max_branching: int = Field(default=100, ge=1)
@@ -131,6 +131,22 @@ class CommunityConfig(_Section):
     _w = field_validator("max_span")(_check_duration)
 
 
+class CurrencyConfig(BaseModel):
+    """Conversion of the amounts to one reference currency before they are compared.
+
+    Laundering chains often change currency between hops (an account receives dollars and
+    forwards euros): without conversion the amount checks of the cycle, scatter-gather and
+    gather-scatter detectors cannot follow them. The rates are inferred from the cross-currency
+    transactions of the scanned table (``rates`` overrides them, in units of ``reference`` per
+    unit of each currency).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    convert: bool = True
+    reference: str | None = "US Dollar"
+    rates: dict[str, float] | None = None
+
+
 class PatternConfig(BaseModel):
     """Full detector configuration; every section can be disabled or tuned."""
 
@@ -143,6 +159,19 @@ class PatternConfig(BaseModel):
     scatter_gather: ScatterGatherConfig = ScatterGatherConfig()
     gather_scatter: GatherScatterConfig = GatherScatterConfig()
     community: CommunityConfig = CommunityConfig()
+    currency: CurrencyConfig = CurrencyConfig()
+    # When a time slice is scanned (benchmark validation / test), the transactions of this
+    # period before it are given as unlabelled context so that motifs straddling the start of
+    # the slice are seen whole; None scans the slice alone.
+    lookback: str | None = "4d"
+    # Only transactions of these payment formats are searched for motifs (None: all). In the
+    # IBM AML simulator every laundering motif is made of ACH transfers; elsewhere leave None.
+    transaction_types: list[str] | None = None
+
+    @field_validator("lookback")
+    @classmethod
+    def _check_lookback(cls, value: str | None) -> str | None:
+        return None if value is None else _check_duration(value)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> PatternConfig:
@@ -165,4 +194,8 @@ class PatternConfig(BaseModel):
         return yaml.safe_dump(self.model_dump(), sort_keys=False)
 
     def enabled_names(self) -> list[str]:
-        return [name for name in type(self).model_fields if getattr(self, name).enabled]
+        return [
+            name
+            for name in type(self).model_fields
+            if isinstance(getattr(self, name), _Section) and getattr(self, name).enabled
+        ]

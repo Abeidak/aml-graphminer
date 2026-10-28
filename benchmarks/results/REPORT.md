@@ -14,8 +14,8 @@ Temporal split sizes: {'train': 3047007, 'val': 1015669, 'test': 1015669}; posit
 | xgb | 3 | 0.474 ± 0.005 | 0.441 ± 0.019 | 0.742 ± 0.054 | 0.315 ± 0.029 | 0.459 ± 0.003 |
 | gat | 3 | 0.447 ± 0.007 | 0.387 ± 0.028 | 0.872 ± 0.035 | 0.250 ± 0.025 | 0.452 ± 0.007 |
 | gcn | 3 | 0.374 ± 0.031 | 0.363 ± 0.029 | 0.785 ± 0.036 | 0.236 ± 0.022 | 0.389 ± 0.030 |
+| patterns | 1 | 0.340 | 0.392 | 0.405 | 0.380 | 0.386 |
 | logreg | 3 | 0.294 ± 0.000 | 0.352 ± 0.000 | 0.334 ± 0.000 | 0.373 ± 0.000 | 0.349 ± 0.000 |
-| patterns | 1 | 0.005 | 0.004 | 0.002 | 0.233 | 0.008 |
 | gae | 3 | 0.003 ± 0.001 | 0.006 ± 0.001 | 0.003 ± 0.001 | 0.480 ± 0.047 | 0.002 ± 0.001 |
 
 Mean ± standard deviation over seeds; deterministic models are run once.
@@ -24,14 +24,14 @@ Mean ± standard deviation over seeds; deterministic models are run once.
 
 | pattern | n_tx | recall_any | recall_same |
 |---|---|---|---|
-| bipartite | 74 | 0.608 | 0.0 |
-| cycle | 109 | 0.771 | 0.0 |
-| fan_in | 137 | 0.883 | 0.869 |
-| fan_out | 140 | 0.707 | 0.55 |
-| gather_scatter | 401 | 0.499 | 0.102 |
-| random | 86 | 0.814 | 0.0 |
-| scatter_gather | 252 | 0.921 | 0.024 |
-| stack | 140 | 0.636 | 0.0 |
+| bipartite | 74 | 0.257 | 0.0 |
+| cycle | 109 | 0.899 | 0.807 |
+| fan_in | 137 | 0.956 | 0.949 |
+| fan_out | 140 | 0.779 | 0.629 |
+| gather_scatter | 401 | 0.758 | 0.187 |
+| random | 86 | 0.872 | 0.0 |
+| scatter_gather | 252 | 0.964 | 0.853 |
+| stack | 140 | 0.657 | 0.0 |
 
 <details><summary>Environment of `benchmarks\results_parts\patterns\HI-Small`</summary>
 
@@ -46,7 +46,7 @@ Mean ± standard deviation over seeds; deterministic models are run once.
   "torch": "2.10.0+cpu",
   "torch_geometric": "2.8.1",
   "cuda": "False",
-  "wall_seconds": 190.5
+  "wall_seconds": 349.4
 }
 ```
 
@@ -152,13 +152,13 @@ Temporal split sizes: {'train': 4154429, 'val': 1384810, 'test': 1384810}; posit
 |---|---|---|---|---|---|---|
 | rf | 3 | 0.191 ± 0.007 | 0.260 ± 0.005 | 0.561 ± 0.084 | 0.170 ± 0.012 | 0.231 ± 0.007 |
 | sage | 3 | 0.176 ± 0.018 | 0.219 ± 0.023 | 0.646 ± 0.156 | 0.135 ± 0.026 | 0.200 ± 0.018 |
+| patterns | 1 | 0.147 | 0.172 | 0.154 | 0.195 | 0.184 |
 | gat | 3 | 0.110 ± 0.026 | 0.135 ± 0.026 | 0.468 ± 0.168 | 0.080 ± 0.013 | 0.149 ± 0.021 |
 | hgb | 3 | 0.106 ± 0.016 | 0.157 ± 0.006 | 0.172 ± 0.060 | 0.160 ± 0.040 | 0.154 ± 0.007 |
 | xgb | 3 | 0.078 ± 0.007 | 0.150 ± 0.015 | 0.153 ± 0.007 | 0.149 ± 0.023 | 0.150 ± 0.008 |
 | gcn | 3 | 0.074 ± 0.024 | 0.108 ± 0.037 | 0.234 ± 0.100 | 0.078 ± 0.033 | 0.124 ± 0.016 |
 | logreg | 3 | 0.032 ± 0.000 | 0.082 ± 0.000 | 0.063 ± 0.000 | 0.117 ± 0.000 | 0.076 ± 0.000 |
 | gae | 3 | 0.001 ± 0.000 | 0.003 ± 0.001 | 0.001 ± 0.000 | 0.471 ± 0.079 | 0.001 ± 0.001 |
-| patterns | 1 | 0.001 | 0.002 | 0.001 | 0.431 | 0.000 |
 
 Mean ± standard deviation over seeds; deterministic models are run once.
 
@@ -166,14 +166,14 @@ Mean ± standard deviation over seeds; deterministic models are run once.
 
 | pattern | n_tx | recall_any | recall_same |
 |---|---|---|---|
-| bipartite | 45 | 0.4 | 0.0 |
-| cycle | 43 | 0.721 | 0.0 |
-| fan_in | 15 | 0.867 | 0.8 |
-| fan_out | 50 | 0.66 | 0.42 |
-| gather_scatter | 76 | 0.408 | 0.026 |
-| random | 24 | 0.792 | 0.0 |
-| scatter_gather | 64 | 0.969 | 0.0 |
-| stack | 26 | 0.538 | 0.0 |
+| bipartite | 45 | 0.156 | 0.0 |
+| cycle | 43 | 0.86 | 0.372 |
+| fan_in | 15 | 0.933 | 0.933 |
+| fan_out | 50 | 0.88 | 0.88 |
+| gather_scatter | 76 | 0.553 | 0.013 |
+| random | 24 | 0.667 | 0.0 |
+| scatter_gather | 64 | 0.969 | 0.938 |
+| stack | 26 | 0.577 | 0.0 |
 
 <details><summary>Environment of `benchmarks\results_parts\patterns\LI-Small`</summary>
 
@@ -188,7 +188,7 @@ Mean ± standard deviation over seeds; deterministic models are run once.
   "torch": "2.10.0+cpu",
   "torch_geometric": "2.8.1",
   "cuda": "False",
-  "wall_seconds": 410.2
+  "wall_seconds": 481.8
 }
 ```
 

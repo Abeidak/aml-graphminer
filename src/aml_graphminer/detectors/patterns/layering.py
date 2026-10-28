@@ -59,10 +59,10 @@ class ScatterGatherDetector(PatternDetector):
         leg2 = order2[np.repeat(lo, counts) + offsets]
 
         src, sink = ctx.src[leg1], ctx.dst[leg2]
-        received = ctx.recv[leg1]
-        comparable = ctx.cur_recv[leg1] == ctx.cur_paid[leg2]
-        ratio_ok = (ctx.paid[leg2] >= cfg.min_hop_ratio * received) & (
-            ctx.paid[leg2] <= cfg.max_hop_ratio * received
+        # amounts in two currencies are compared in the reference currency (when rates are known)
+        received, forwarded, comparable = ctx.hop_amounts(leg1, leg2)
+        ratio_ok = (forwarded >= cfg.min_hop_ratio * received) & (
+            forwarded <= cfg.max_hop_ratio * received
         )
         keep = (src != sink) & (~comparable | ratio_ok)
         leg1, leg2, src, sink = leg1[keep], leg2[keep], src[keep], sink[keep]
@@ -96,9 +96,9 @@ class ScatterGatherDetector(PatternDetector):
                         "sink": str(ctx.names[c_node]),
                         "n_intermediaries": len(mids),
                         "span_seconds": span,
-                        "dispersed_amount": float(ctx.recv[leg1[idx]].sum()),
+                        "dispersed_amount": float(ctx.recv_c[np.unique(leg1[idx])].sum()),
                     },
-                    amount=ctx.paid[np.unique(leg1[idx])],
+                    amount=ctx.paid_c[np.unique(leg1[idx])],
                 )
             )
         return alerts
@@ -144,7 +144,10 @@ class GatherScatterDetector(PatternDetector):
                 receivers = np.unique(ctx.dst[scatter])
                 if len(receivers) < cfg.min_out:
                     continue
-                total_in, total_out = float(ctx.recv[gather].sum()), float(ctx.paid[scatter].sum())
+                total_in, total_out = (
+                    float(ctx.recv_c[gather].sum()),
+                    float(ctx.paid_c[scatter].sum()),
+                )
                 ratio = total_out / total_in if total_in > 0 else 0.0
                 if not (cfg.min_conservation <= ratio <= cfg.max_conservation):
                     continue
@@ -180,7 +183,7 @@ class GatherScatterDetector(PatternDetector):
                             "scattered_amount": total_out,
                             "conservation_ratio": ratio,
                         },
-                        amount=ctx.paid[gather],
+                        amount=ctx.paid_c[gather],
                     )
                 )
         return alerts

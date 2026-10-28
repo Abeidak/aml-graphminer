@@ -1,4 +1,4 @@
 ,,pr_auc,pr_auc,f1,f1,precision,precision,recall,recall,recall_at_k,recall_at_k
 ,,mean,std,mean,std,mean,std,mean,std,mean,std
 dataset,model,,,,,,,,,,
-HI-Small,patterns,0.005332754985720367,,0.0036201049744043886,,0.0018242137159973529,,0.23316638842515303,,0.0077907623817473565,
+HI-Small,patterns,0.3401554195884238,,0.39184142487790863,,0.40498812351543945,,0.3795214245965498,,0.3861992209237618,

@@ -1,6 +1,7 @@
 """Structural-motif detectors on hand-built scenarios (ground truth known by construction)."""
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from aml_graphminer.detectors.patterns import (
@@ -15,6 +16,7 @@ from aml_graphminer.detectors.patterns import (
     SmurfingDetector,
     alert_precision_table,
     evaluate_scan,
+    exchange_rates,
     pattern_recall_table,
     register_detector,
 )
@@ -137,13 +139,78 @@ def test_cycle_must_be_time_respecting():
     assert scan_one(CycleDetector(), backwards) == []
 
 
-def test_cycle_ignores_amounts_in_different_currencies_by_default():
+def test_cycle_rejects_hops_whose_exchange_rate_is_unknown_by_default():
+    # no cross-currency transaction reveals the dollar / euro rate: the hop cannot be checked
     df = make_tx([(0, "A", "B", 5000.0), (60, "B", "C", 4900.0), (120, "C", "A", 4800.0)])
     df.loc[1, "currency"] = "Euro"
     df.loc[1, "currency_received"] = "Euro"
     assert scan_one(CycleDetector(), df) == []
     config = PatternConfig.from_dict({"cycle": {"cross_currency": True}}).cycle
     assert len(scan_one(CycleDetector(config), df)) == 1
+
+
+def _cycle_through_euros(forwarded_eur: float):
+    """A -> B in dollars, B -> C in euros, C -> A in dollars; X -> Y reveals the rate 0.85."""
+    df = make_tx(
+        [
+            (0, "A", "B", 5000.0, 1.0, "cycle"),
+            (60, "B", "C", forwarded_eur, 1.0, "cycle"),
+            (120, "C", "A", 4800.0, 1.0, "cycle"),
+            (500, "X", "Y", 1000.0),
+        ]
+    )
+    df.loc[1, ["currency", "currency_received"]] = "Euro"
+    df.loc[3, ["currency_received", "amount_received"]] = ["Euro", 850.0]
+    return df
+
+
+def test_cycle_follows_money_that_changes_currency():
+    df = _cycle_through_euros(4900.0 * 0.85)  # B forwards 98 % of what it got, in euros
+    scanner = PatternScanner(only=["cycle"])
+    alerts = scanner.scan(df).alerts
+    assert len(alerts) == 1 and alerts[0].evidence["length"] == 3
+    # amounts reported in the reference currency (US dollars)
+    assert alerts[0].evidence["amount_retained"] == pytest.approx(4800 / 5000)
+    # without conversion the euro hop cannot be compared and the cycle is lost
+    off = PatternConfig.from_dict({"currency": {"convert": False}})
+    assert PatternScanner(off, only=["cycle"]).scan(df).alerts == []
+    # conversion also enforces conservation across currencies
+    leaky = _cycle_through_euros(2000.0 * 0.85)
+    assert scanner.scan(leaky).alerts == []
+
+
+def test_exchange_rates_are_inferred_transitively_and_can_be_given():
+    names = np.array(["US Dollar", "Euro", "UK Pound", "Yen"], dtype=object)
+    # USD -> EUR at 0.85 (three times, one rounded), EUR -> GBP at 0.9; the yen is never exchanged
+    paid = np.array([100.0, 200.0, 300.0, 100.0, 50.0])
+    recv = np.array([85.0, 170.0, 255.1, 90.0, 50.0])
+    cur_paid = np.array([0, 0, 0, 1, 3])
+    cur_recv = np.array([1, 1, 1, 2, 3])
+    rates = exchange_rates(paid, recv, cur_paid, cur_recv, names, reference="US Dollar")
+    assert rates[0] == 1.0
+    assert rates[1] == pytest.approx(1 / 0.85)
+    assert rates[2] == pytest.approx(1 / (0.85 * 0.9))
+    assert np.isnan(rates[3])
+    given = exchange_rates(paid, recv, cur_paid, cur_recv, names, known={"Yen": 0.007})
+    assert given[3] == pytest.approx(0.007)
+    # unknown reference: the most used payment currency
+    other = exchange_rates(paid, recv, cur_paid, cur_recv, names, reference="Peso")
+    assert other[0] == 1.0
+    assert exchange_rates(paid, recv, cur_paid, cur_recv, names[:0]).size == 0
+
+
+def test_alert_amounts_are_converted_to_the_reference_currency():
+    df = _cycle_through_euros(4900.0 * 0.85)
+    ctx = TxArrays.from_frame(df)
+    assert ctx.paid_c[1] == pytest.approx(4900.0)
+    received, forwarded, comparable = ctx.hop_amounts(np.array([0, 1]), np.array([1, 2]))
+    assert comparable.all()
+    assert forwarded / received == pytest.approx([0.98, 4800 / 4900])
+    off = TxArrays.from_frame(
+        df, PatternConfig.from_dict({"currency": {"convert": False}}).currency
+    )
+    assert np.isnan(off.fx).all() and off.paid_c[1] == pytest.approx(4900.0 * 0.85)
+    assert not off.hop_amounts(np.array([0]), np.array([1]))[2].any()
 
 
 def test_scatter_gather_detected():
@@ -272,3 +339,38 @@ def test_group_slices_and_sliding_windows():
     assert sliding_windows(ts, others, window=3.0, min_distinct=2, accept=lambda i, j: i >= 3) == [
         (3, 6)
     ]
+
+
+def test_scan_with_history_sees_motifs_that_started_before_the_slice():
+    rows = [
+        (0, "A", "B", 5000.0, 1.0, "cycle"),
+        (60, "B", "C", 4900.0, 1.0, "cycle"),
+        (120, "C", "A", 4800.0, 1.0, "cycle"),
+        (10, "P", "Q", 100.0),
+        (20, "Q", "R", 100.0),
+        (30, "R", "P", 100.0, 1.0, "cycle"),  # a cycle entirely in the history
+    ]
+    df = make_tx(rows)
+    slice_ = df[df["timestamp"] >= df["timestamp"].iloc[0] + pd.Timedelta(minutes=100)]
+    history = df[~df.index.isin(slice_.index)]
+    scanner = PatternScanner(only=["cycle"])
+    assert scanner.scan(slice_).alerts == []  # the slice alone holds one hop of the loop
+    result = scanner.scan(slice_, history)
+    assert len(result.alerts) == 1 and len(result.alerts[0].tx_ids) == 3
+    assert list(result.tx_ids) == list(slice_.index)  # only the slice is scored
+    scores, _ = result.transaction_scores()
+    assert scores.tolist() == [scores.max()] and scores.max() > 0
+    # calibration only reads the labels of the slice (history labels are hidden here)
+    hidden = history.assign(label=np.nan)
+    assert scanner.fit_calibration(slice_, history=hidden)["cycle"] == pytest.approx(2 / 3)
+
+
+def test_scan_can_be_restricted_to_some_payment_formats():
+    df = make_tx([(0, "A", "B", 5000.0), (60, "B", "C", 4900.0), (120, "C", "A", 4800.0)])
+    assert len(PatternScanner(only=["cycle"]).scan(df).alerts) == 1
+    wire_only = PatternConfig.from_dict({"transaction_types": ["Wire"]})
+    result = PatternScanner(wire_only, only=["cycle"]).scan(df)
+    assert result.alerts == [] and len(result.tx_ids) == 3  # every transaction is still scored
+    assert PatternConfig.from_dict({"lookback": None}).lookback is None
+    with pytest.raises(ConfigError):
+        PatternConfig.from_dict({"lookback": "soon"})

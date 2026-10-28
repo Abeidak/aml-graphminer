@@ -119,7 +119,7 @@ class SmurfingDetector(PatternDetector):
         for node in candidates.tolist():
             out_rows = out_groups[node]
             out_ts = ctx.ts[out_rows]
-            out_amt = ctx.paid[out_rows]
+            out_amt = ctx.paid_c[out_rows]
             csum = np.concatenate([[0.0], np.cumsum(out_amt)])
             used_until = -np.inf
             for r in in_groups[node]:  # chronological inflows
@@ -130,7 +130,7 @@ class SmurfingDetector(PatternDetector):
                 hi = int(np.searchsorted(out_ts, t0 + window, side="right"))
                 if hi - lo < cfg.min_parts:
                     continue
-                inflow = ctx.recv[r]
+                inflow = ctx.recv_c[r]
                 total = csum[hi] - csum[lo]
                 parts = out_amt[lo:hi]
                 if (

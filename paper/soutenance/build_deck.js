@@ -392,8 +392,8 @@ async function main() {
   s = pres.addSlide(); light(s); title(s, "Bilan par rapport au cahier des charges"); number(s);
   const items = [
     ["J1", "Pipeline + EDA", "ok"], ["J2", "Motifs > 0,5", "ok"], ["J3", "3 GNN + benchmark", "ok"], ["J4", "Article soumis", "todo"],
-    ["L1", "Dépôt GitHub", "part"], ["L2", "Package PyPI", "todo"], ["L3", "API déployée", "part"], ["L4", "CLI", "ok"],
-    ["L5", "Docs + notebooks", "part"], ["L6", "Modèles sur le Hub", "part"], ["L7", "Article", "part"], ["L8", "Mémoire", "part"],
+    ["L1", "Dépôt GitHub", "ok"], ["L2", "Package PyPI", "todo"], ["L3", "API déployée", "ok"], ["L4", "CLI", "ok"],
+    ["L5", "Docs + notebooks", "part"], ["L6", "Modèles sur le Hub", "ok"], ["L7", "Article", "part"], ["L8", "Mémoire", "part"],
   ];
   const st = { ok: [TEAL, fa.FaCheck], part: [GOLD, fa.FaHourglassHalf], todo: ["9AA7BD", fa.FaRegClock] };
   for (let i = 0; i < items.length; i++) {

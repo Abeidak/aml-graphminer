@@ -55,6 +55,10 @@ for Windows (virtual environment, PyTorch CPU and `pyg-lib`) are in
 
 ## Try it in two minutes (synthetic data, nothing to download)
 
+**Live demo**: <https://aml-graphminer-demo.onrender.com/ui/> (web interface) and <https://aml-graphminer-demo.onrender.com/docs> (REST API, OpenAPI 3.1) — synthetic
+data, free instance that sleeps after 15 minutes without visits (the first request then takes
+about a minute). Do not upload real customer data.
+
 ```bash
 amlgm serve --demo --open-browser                         # web interface: http://127.0.0.1:8000/ui/
 ```

@@ -13,7 +13,7 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 |---|---|---|
 | L1 — Code source GitHub, licence MIT | ✅ | Dépôt **public** https://github.com/Abeidak/aml-graphminer (depuis le 29/10/2026), CI verte. Reste (facultatif) : ORCID dans `CITATION.cff`. |
 | L2 — Package PyPI | ⏳ 👤 | Wheel et sdist construits par la CI. Reste : projet PyPI + *trusted publishing* (`release.yml`), `git tag v0.1.0`. |
-| L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | 🟡 👤 | API, interface web, image Docker faits et testés ; déploiement gratuit prêt sur **Render** (`render.yaml`, 250 Mo mesurés pour 512 Mo disponibles). Reste : compte render.com + *New → Blueprint* (3 clics). Les Spaces Docker Hugging Face sont devenus payants. |
+| L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | ✅ | En ligne depuis le 29/10/2026 : https://aml-graphminer-demo.onrender.com/ui/ et https://aml-graphminer-demo.onrender.com/docs (Render, offre gratuite, données synthétiques, envois limités à 20 Mo ; veille après 15 min sans visite). |
 | L4 — CLI Click `amlgm scan\|train\|explain` | ✅ | + `eda`, `score`, `benchmark`, `serve`, `explain --top` (lot d'alertes), `train --model hybrid`, exports Neo4j / Hub. |
 | L5 — Sphinx + 3 notebooks + ReadTheDocs | 🟡 👤 | Documentation Sphinx (stricte, sans avertissement), notebooks 01–04 (01–03 exécutés et vérifiés par nbval en CI). Reste : import sur readthedocs.org. |
 | L6 — Modèles pré-entraînés sur Hugging Face | ✅ (privés) | 12 modèles HI-Small en dépôts privés `abeideck/aml-graphminer-<modèle>-hi-small`, rechargés avec succès depuis le Hub. Reste (facultatif) : les rendre publics, ajouter LI-Small. |

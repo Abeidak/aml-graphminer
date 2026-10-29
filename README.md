@@ -6,6 +6,7 @@ unsupervised graph auto-encoder behind one Python SDK, a web investigation inter
 line and a REST API.
 
 [![CI](https://github.com/Abeidak/aml-graphminer/actions/workflows/ci.yml/badge.svg)](https://github.com/Abeidak/aml-graphminer/actions/workflows/ci.yml)
+[![Documentation](https://readthedocs.org/projects/aml-graphminer/badge/?version=latest)](https://aml-graphminer.readthedocs.io/)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -149,7 +150,7 @@ ones must be re-trained (or loaded) with the same library versions (`amlgm train
 
 ## Documentation
 
-`docs/` (Sphinx): installation, concepts, data (download, EDA), features, patterns and risk
+Online: <https://aml-graphminer.readthedocs.io/>. `docs/` (Sphinx): installation, concepts, data (download, EDA), features, patterns and risk
 communities, models (supervised and unsupervised), explainability, evaluation, web interface, CLI,
 REST API, configuration, deployment (Docker, Neo4j, Hub), architecture, extending, limitations and
 the API reference. Build with `pip install -e ".[docs]" && sphinx-build -n docs docs/_build/html`.

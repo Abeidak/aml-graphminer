@@ -225,9 +225,9 @@ L'état complet du projet (fait / reste à faire, résultats) est tenu dans
 |---|---|
 | L1 — dépôt GitHub (MIT) | fait : https://github.com/Abeidak/aml-graphminer (privé). Reste : renseigner auteurs / e-mails / ORCID dans `pyproject.toml` et `CITATION.cff`, puis rendre le dépôt public (*Settings* → *Change visibility*) ; la CI démarre à chaque `git push` |
 | L2 — PyPI | créer le projet sur pypi.org, configurer le *trusted publishing* pour `.github/workflows/release.yml` (environnement `pypi`), puis `git tag v0.1.0 ; git push origin v0.1.0` |
-| L3 — API déployée | prêt : `hf auth login` (une fois, dans votre terminal) puis `python scripts\deploy_space.py --repo-id VOTRE_COMPTE/aml-graphminer-demo` → Space Hugging Face gratuit (interface `/ui/`, API `/docs`), voir `docs/deployment.md` |
+| L3 — API déployée | prêt sur **Render** (gratuit) : compte render.com (*Sign up with GitHub*), *New → Blueprint* → dépôt `Abeidak/aml-graphminer` → *Apply* (fichier `render.yaml` fourni) ; interface `/ui/`, API `/docs`. Les Spaces Docker de Hugging Face sont devenus payants (PRO) |
 | L5 — ReadTheDocs | importer le dépôt sur readthedocs.org (`.readthedocs.yaml` fourni) |
-| L6 — modèles HuggingFace | après `hf auth login` : `amlgm export-hub runs\sage-HI-Small hub\sage --repo-id VOTRE_COMPTE/aml-graphminer-sage --push` (dépôt privé par défaut) |
+| L6 — modèles HuggingFace | fait : 12 modèles HI-Small en dépôts **privés** `abeideck/aml-graphminer-<modèle>-hi-small` (fiche générée) ; les rendre publics : *Settings → Change visibility* sur huggingface.co |
 | L7 — article Software Impacts | compléter les `\todo{}` de `paper\main.tex` (auteurs, DOI Zenodo, résultats réels), compiler sur Overleaf, soumettre |
 | L8 — mémoire | plan détaillé dans `paper\memoire_plan.md` ; reprenez figures et tableaux produits par les notebooks et `benchmarks\make_report.py` ; déclarez l'usage d'outils d'IA selon le règlement de votre université |
 

@@ -11,12 +11,12 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 
 | livrable | état | détail |
 |---|---|---|
-| L1 — Code source GitHub, licence MIT | 🟡 👤 | Dépôt **privé** https://github.com/Abeidak/aml-graphminer, CI verte (12/12 jobs). Reste : auteurs / e-mails / ORCID dans `pyproject.toml` et `CITATION.cff`, puis rendre le dépôt public. |
+| L1 — Code source GitHub, licence MIT | ✅ | Dépôt **public** https://github.com/Abeidak/aml-graphminer (depuis le 29/10/2026), CI verte. Reste (facultatif) : ORCID dans `CITATION.cff`. |
 | L2 — Package PyPI | ⏳ 👤 | Wheel et sdist construits par la CI. Reste : projet PyPI + *trusted publishing* (`release.yml`), `git tag v0.1.0`. |
-| L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | 🟡 👤 | API, interface web, image Docker faits et testés ; déploiement gratuit prêt et vérifié en local (`scripts/deploy_space.py` → Space Hugging Face, port 7860, envois limités à 20 Mo). Reste : `hf auth login` de votre côté, puis je publie. |
+| L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | 🟡 👤 | API, interface web, image Docker faits et testés ; déploiement gratuit prêt sur **Render** (`render.yaml`, 250 Mo mesurés pour 512 Mo disponibles). Reste : compte render.com + *New → Blueprint* (3 clics). Les Spaces Docker Hugging Face sont devenus payants. |
 | L4 — CLI Click `amlgm scan\|train\|explain` | ✅ | + `eda`, `score`, `benchmark`, `serve`, `explain --top` (lot d'alertes), `train --model hybrid`, exports Neo4j / Hub. |
 | L5 — Sphinx + 3 notebooks + ReadTheDocs | 🟡 👤 | Documentation Sphinx (stricte, sans avertissement), notebooks 01–04 (01–03 exécutés et vérifiés par nbval en CI). Reste : import sur readthedocs.org. |
-| L6 — Modèles pré-entraînés sur Hugging Face | 🟡 👤 | 18 modèles entraînés sur Kaggle (9 types × HI/LI-Small), copiés dans `runs\` et gardés sur Kaggle ; 6 hybrides dans `runs\hybrid-*`. Reste : `amlgm export-hub ... --push` avec votre jeton HF. |
+| L6 — Modèles pré-entraînés sur Hugging Face | ✅ (privés) | 12 modèles HI-Small en dépôts privés `abeideck/aml-graphminer-<modèle>-hi-small`, rechargés avec succès depuis le Hub. Reste (facultatif) : les rendre publics, ajouter LI-Small. |
 | L7 — Article Software Impacts | 🟡 👤 | `paper/main.tex` complet selon le plan du CDC, résultats mesurés, 23 références. Reste : auteurs, lien public + DOI Zenodo, déclarations, source pour le chiffre du marché AML, compilation sur Overleaf, soumission. |
 | L8 — Mémoire 60–80 p. + soutenance | 🟡 | Plan détaillé avec résultats (`paper/memoire_plan.md`), 16 diapositives colorées et animées, discours dans les notes (`paper/soutenance/`). Reste : rédaction du mémoire, votre nom sur la diapositive 1, répétition. |
 

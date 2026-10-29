@@ -38,7 +38,19 @@ public showcase; for real data add authentication in front (reverse proxy, VPN) 
 none — and never upload real customer data to a public instance. `amlgm serve --max-upload-mb N`
 caps the size of the files visitors can upload (512 MB by default).
 
-### Hugging Face Spaces (free)
+### Render (free)
+
+`render.yaml` at the root of the repository is a Render *Blueprint*: on render.com,
+*New → Blueprint*, pick the (public) repository and *Apply*. Render builds `docker/Dockerfile` and
+runs `amlgm serve --demo --port 8000 --max-upload-mb 20` on the free plan (0.1 CPU, 512 MB — the
+demo needs about 250 MB at start-up), with `/health` as health check. A free service sleeps after
+15 minutes without traffic and wakes up in about a minute; `autoDeploy: false` means a new
+version is deployed only when you ask for it (*Manual Deploy*).
+
+### Hugging Face Spaces (paid for Docker)
+
+Docker Spaces on Hugging Face's free CPU now require a PRO subscription (the API answers
+`402 Payment Required`); with one, `scripts/deploy_space.py` publishes the same demo.
 
 `scripts/deploy_space.py` publishes the demo as a Docker Space: a `Dockerfile` that installs the
 package with its `api` and `viz` extras and runs `amlgm serve --demo` on port 7860 as user 1000

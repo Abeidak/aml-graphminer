@@ -1,0 +1,17 @@
+# Render Blueprint: the REST API + web interface demo (synthetic data) on a free web service.
+# render.com -> New -> Blueprint -> repository Abeidak/aml-graphminer -> Apply.
+# The free plan (0.1 CPU, 512 MB) sleeps after 15 min without traffic and wakes up in about a
+# minute; the demo detector is re-trained at start-up (about 250 MB of memory measured).
+services:
+  - type: web
+    name: aml-graphminer-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    dockerCommand: amlgm serve --demo --host 0.0.0.0 --port 8000 --max-upload-mb 20
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: "8000"

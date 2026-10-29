@@ -1,4 +1,4 @@
-# État du projet AML-GraphMiner (mis à jour le 28/10/2026)
+# État du projet AML-GraphMiner (mis à jour le 29/10/2026)
 
 Suivi de tout ce qui a été fait et de ce qui reste, par rapport au cahier des charges (CDC) et à
 la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/results/REPORT.md`,
@@ -12,13 +12,13 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | livrable | état | détail |
 |---|---|---|
 | L1 — Code source GitHub, licence MIT | ✅ | Dépôt **public** https://github.com/Abeidak/aml-graphminer (depuis le 29/10/2026), CI verte. Reste (facultatif) : ORCID dans `CITATION.cff`. |
-| L2 — Package PyPI | 🟡 👤 | Éditeur de confiance PyPI configuré (`Abeidak/aml-graphminer`, `release.yml`, environnement `pypi`) ; nom `aml-graphminer` libre. Reste : vrais nom et e-mail d'auteur, puis étiquette `v0.1.0`. |
+| L2 — Package PyPI | 🟡 👤 | Éditeur de confiance PyPI configuré (`Abeidak/aml-graphminer`, `release.yml`, environnement `pypi`) ; nom `aml-graphminer` libre ; auteurs renseignés (les deux étudiants), paquet construit et vérifié (`twine check`). Reste : l'étiquette `v0.1.0`, qui publie (définitif) — sur votre accord. |
 | L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | ✅ | En ligne depuis le 29/10/2026 : https://aml-graphminer-demo.onrender.com/ui/ et https://aml-graphminer-demo.onrender.com/docs (Render, offre gratuite, données synthétiques, envois limités à 20 Mo ; veille après 15 min sans visite). |
 | L4 — CLI Click `amlgm scan\|train\|explain` | ✅ | + `eda`, `score`, `benchmark`, `serve`, `explain --top` (lot d'alertes), `train --model hybrid`, exports Neo4j / Hub. |
 | L5 — Sphinx + 3 notebooks + ReadTheDocs | ✅ | Documentation en ligne : https://aml-graphminer.readthedocs.io/ (construite sans erreur), notebooks 01–05 (01–03 et 05 exécutés, vérifiés par nbval en CI ; 05 = plugin Jupyter). |
 | L6 — Modèles pré-entraînés sur Hugging Face | ✅ (privés) | 12 modèles HI-Small en dépôts privés `abeideck/aml-graphminer-<modèle>-hi-small`, rechargés avec succès depuis le Hub. Reste (facultatif) : les rendre publics, ajouter LI-Small. |
-| L7 — Article Software Impacts | 🟡 👤 | `paper/main.tex` complet selon le plan du CDC, résultats mesurés, 23 références. Reste : auteurs, lien public + DOI Zenodo, déclarations, source pour le chiffre du marché AML, compilation sur Overleaf, soumission. |
-| L8 — Mémoire 60–80 p. + soutenance | 🟡 | Plan détaillé avec résultats (`paper/memoire_plan.md`), 16 diapositives colorées et animées, discours dans les notes (`paper/soutenance/`). Reste : rédaction du mémoire, votre nom sur la diapositive 1, répétition. |
+| L7 — Article Software Impacts | 🟡 👤 | `paper/main.tex` complet selon le plan du CDC, résultats mesurés, 23 références. Auteurs renseignés. Reste : DOI Zenodo, déclarations, source pour le chiffre du marché AML, compilation sur Overleaf, soumission. |
+| L8 — Mémoire 60–80 p. + soutenance | 🟡 | Plan détaillé avec résultats (`paper/memoire_plan.md`), 16 diapositives colorées et animées, discours dans les notes (`paper/soutenance/`). Diapositive 1 : les deux auteurs et l'encadrant. Reste : rédaction du mémoire, répétition. |
 
 ## 2. Jalons (J1–J4)
 
@@ -104,12 +104,13 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 
 Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8.
 
-- [ ] Renseigner auteurs, e-mails, ORCID (`pyproject.toml`, `CITATION.cff`, `paper/main.tex`,
-      diapositive de titre).
-- [ ] Rendre le dépôt public, activer Zenodo (DOI), compléter C2 / C8 / C9 de l'article.
-- [ ] PyPI (*trusted publishing*) puis `git tag v0.1.0 ; git push origin v0.1.0`.
-- [ ] ReadTheDocs ; Hugging Face Hub (`amlgm export-hub runs\sage-HI-Small hub\sage --repo-id ... --push`).
-- [ ] Déploiement cloud de l'API (image Docker fournie).
+- [x] Auteurs et e-mails (`pyproject.toml`, `CITATION.cff`, `LICENSE`, `paper/main.tex`,
+      diapositive de titre) ; ORCID facultatif, plus tard.
+- [x] Dépôt public, ReadTheDocs, modèles sur le Hugging Face Hub (privés), API en ligne (Render).
+- [ ] Publication PyPI : `git tag v0.1.0 ; git push origin v0.1.0` (définitive : sur votre accord).
+- [ ] Zenodo (DOI de la version), compléter C2 / C8 / C9 de l'article.
+- [ ] Décider si les modèles du Hub deviennent publics (liens de l'article et du README).
+- [ ] Supprimer le fichier de clé Render et révoquer la clé (tableau de bord Render).
 - [ ] Article : source pour la taille du marché AML (ou supprimer la mention), déclarations
       (conflits d'intérêts, IA), compilation Overleaf, soumission à Software Impacts.
 - [ ] Mémoire : rédaction à partir de `paper/memoire_plan.md`, captures de l'interface web,
@@ -125,7 +126,26 @@ Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8
 - [ ] Hybride sur 3 graines (aujourd'hui une seule graine, modèles Kaggle seed 0).
 - [ ] Jeux *Medium* d'IBM (nécessitent le GPU Kaggle et plus de mémoire).
 
-## 7. Limites connues
+## 7. Environnement et matériel (fiche « Environnement et matériel »)
+
+| prévu | utilisé |
+|---|---|
+| Développement : 8–16 Go RAM | portable Windows 11, Intel Core i7-1255U, 16 Go RAM, sans GPU dédié |
+| Entraînement GNN : GPU ou Kaggle | Kaggle, GPU Tesla T4 (noyaux privés) ; Colab et cluster FST non utilisés |
+| Benchmark Medium / Large | non fait (seuls HI/LI-Small et Elliptic) |
+| Python 3.11+, PyTorch 2.x, PyG 2.5+, NetworkX 3.x, Pandas, scikit-learn, XGBoost, Captum, Pydantic, FastAPI, Click 8, pytest, Hypothesis, coverage, ruff, Sphinx + MyST, Docker | utilisés (Python 3.11–3.13 en CI) ; en plus : mypy, nbval, Neo4j |
+| PyTorch Lightning | implémenté et testé (`trainer: lightning`) ; le benchmark publié utilise la boucle PyTorch |
+| Polars | implémenté et testé (`engine="polars"`) ; inutile sur les jeux *Small* (Pandas suffit) |
+| MLflow | implémenté et testé (`amlgm train --mlflow`) ; pas utilisé pour le benchmark publié |
+| Poetry ou hatch | remplacé par setuptools + `build` + `twine` (standard, suffisant) |
+| docker-compose | fichiers fournis ; non exécuté en local |
+| Fly.io / Render / cluster FST | Render |
+| Kaggle, GitHub + Actions, ReadTheDocs, Hugging Face Hub | utilisés |
+| PyPI | en attente de l'étiquette `v0.1.0` |
+| Elsevier (Software Impacts) | article prêt, non soumis |
+| Données : HI/LI-Small, Elliptic, HI-Medium | HI/LI-Small et Elliptic ; HI-Medium non utilisé |
+
+## 8. Limites connues
 
 Données IBM synthétiques (les scores mesurent la capacité à retrouver les motifs du générateur) ;
 filtre ACH propre au simulateur IBM ; l'auto-encodeur signale l'inhabituel, pas l'illicite ; API

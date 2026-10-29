@@ -18,9 +18,14 @@ keywords:
   - explainable AI
   - financial crime
 authors:
-  # TODO: replace with the student's real name and ORCID before publishing.
-  - family-names: "TODO_STUDENT_FAMILY_NAME"
-    given-names: "TODO_STUDENT_GIVEN_NAME"
+  # ORCID iDs can be added later (orcid: "https://orcid.org/...")
+  - family-names: "Abeideck"
+    given-names: "Ahmed Ahmed Mahmoud"
+    email: "abeideck.ahmed@gmail.com"
+    affiliation: "Faculté des Sciences et Techniques, Université de Nouakchott"
+  - family-names: "Boubacar"
+    given-names: "Saade Jaavar"
+    email: "saadejaavar21@gmail.com"
     affiliation: "Faculté des Sciences et Techniques, Université de Nouakchott"
   - family-names: "Cheikh Tourad"
     given-names: "Mohamedou El Ghotob"

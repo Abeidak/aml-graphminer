@@ -7,8 +7,9 @@ CI and must be checked by a person.
 
 - [x] ⚠ Replace every `OWNER` with the real GitHub user (`Abeidak`; repository
       https://github.com/Abeidak/aml-graphminer, private until the release).
-- [ ] ⚠ `CITATION.cff` and `pyproject.toml`: real author names, e-mail addresses, ORCID iDs and
-      the release date; remove the `TODO` markers.
+- [x] ⚠ `CITATION.cff` and `pyproject.toml`: real author names and e-mail addresses (ORCID iDs
+      optional, later). The `TODO` markers left in `CITATION.cff` (release date, supervisor's
+      ORCID) are filled in when tagging.
 - [ ] ⚠ Confirm the licence of the generated documentation and of any text copied from the
       project specification.
 - [ ] ⚠ Run notebook `04_gnn_training_colab` on a Colab GPU; commit it with its outputs. Push the
@@ -28,10 +29,10 @@ CI and must be checked by a person.
 - [x] CI is green on `main`: lint, core (3 Pythons), extras, **gnn**, notebooks, docs, package, docker.
       Fix whatever the GNN/Docker/docs jobs reveal — they could not be run when this version was written.
 - [x] Read the documentation build log (`sphinx-build -n`) and fix warnings.
-- [ ] Create the PyPI project, configure *trusted publishing* for `release.yml` (environment `pypi`).
+- [x] Create the PyPI project, configure *trusted publishing* for `release.yml` (environment `pypi`).
 - [ ] Zenodo: enable the GitHub integration so each release gets a DOI; add the DOI to
       `CITATION.cff`, the README and the paper (Software Impacts requires an archived version).
-- [ ] Read the Docs: import the repository (`.readthedocs.yaml` is provided).
+- [x] Read the Docs: import the repository (`.readthedocs.yaml` is provided).
 
 ## Every release
 

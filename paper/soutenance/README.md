@@ -18,4 +18,4 @@ python animate.py AML-GraphMiner_soutenance.pptx  # transitions + entrance anima
 Sources: `benchmarks/results_parts/*/*/results.csv` and `per_pattern_recall.csv`,
 `benchmarks/results_parts/hybrid/hybrid.json`, `results/eda-*/summary.json`, plus the few
 figures quoted with their source in `make_data.py` (J2 history, confidence interval, UNODC, tests).
-Before the defence: put the student's name on slide 1 and rehearse with the notes.
+Before the defence: rehearse with the notes (slide 1 carries the two authors and the supervisor).

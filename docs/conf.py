@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import aml_graphminer
 
 project = "AML-GraphMiner"
-author = "AML-GraphMiner contributors"
+author = "Ahmed Ahmed Mahmoud Abeideck, Saade Jaavar Boubacar"
 copyright = f"{date.today().year}, {author}"
 release = version = aml_graphminer.__version__
 

@@ -191,3 +191,9 @@ PGExplainer, Captum, attention), une **interface web d'investigation**, une lign
 (`amlgm`), une API REST et des exports MLflow, Hugging Face Hub et Neo4j. Le projet est développé
 à l'Unité de recherche Al-Khawarizmi (Université de Nouakchott). Guide de lancement et de test en
 français : [GUIDE_FR.md](GUIDE_FR.md).
+
+## Authors
+
+Ahmed Ahmed Mahmoud Abeideck and Saade Jaavar Boubacar (master's final-year project, Faculty of Sciences and Techniques, University of
+Nouakchott), supervised by Mohamedou El Ghotob Cheikh Tourad (Al-Khawarizmi Research Unit). How to cite the software:
+[CITATION.cff](CITATION.cff).

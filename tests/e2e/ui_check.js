@@ -21,6 +21,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const results = [];
 const problems = [];
 const exportsSeen = new Set();
+let initialIds = []; // datasets that existed before the check: never closed by it
 
 async function check(name, fn) {
   const t0 = Date.now();
@@ -63,6 +64,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
   await check("page loads, detector badge", async () => {
     await page.goto(`${BASE}/ui/`, { waitUntil: "networkidle0" });
     await page.waitForFunction(() => !/chargement/i.test(document.querySelector("#model-badge").textContent));
+    initialIds = await page.$$eval("#dataset-select option", (os) => os.map((o) => o.value));
     await shot("01-accueil.png");
     return (await page.$eval("#model-badge", (e) => e.textContent.trim())).slice(0, 80);
   });
@@ -180,30 +182,52 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     return `${before} -> ${await page.$$eval("#dataset-select option", (os) => os.length)} datasets`;
   });
 
-  await check("close datasets (double click closes only one)", async () => {
-    const count = () => page.$$eval("#dataset-select option", (os) => os.length);
-    const start = await count();
-    // two clicks in the same instant: the second one must be ignored
-    const disabledAtOnce = await page.evaluate(() => {
-      const b = document.querySelector("#btn-delete");
-      b.click();
-      const d = b.disabled;
-      b.click();
-      return d;
-    });
-    ensure(disabledAtOnce, "close button still enabled while closing");
-    await page.waitForFunction((n) => document.querySelectorAll("#dataset-select option").length === n - 1
-      && !document.querySelector("#btn-delete").disabled, { polling: 200 }, start);
-    for (let left = start - 1; left > 0; left--) {
-      await page.click("#btn-delete");
-      await page.waitForFunction((n) => document.querySelectorAll("#dataset-select option").length === n - 1
-        && (n - 1 === 0 || !document.querySelector("#btn-delete").disabled), { polling: 200 }, left);
+  await check("close the check's datasets (a double click closes one)", async () => {
+    const ids = () => page.$$eval("#dataset-select option", (os) => os.map((o) => o.value));
+    const snapshot = () => page.evaluate(() => ({
+      datasets: document.querySelectorAll("#dataset-select option").length,
+      disabled: document.querySelector("#btn-delete").disabled,
+      status: document.querySelector("#status").textContent.slice(0, 80),
+    }));
+    const mine = (await ids()).filter((id) => !initialIds.includes(id));
+    ensure(mine.length === 2, `datasets created by the check: ${mine}`);
+    for (const [k, id] of mine.entries()) {
+      if ((await page.$eval("#dataset-select", (e) => e.value)) !== id) {
+        await page.select("#dataset-select", id);
+        // the loading overlay blocks clicks on purpose: wait until the dataset is shown
+        await page.waitForFunction((x) => document.querySelector("#dataset-select").value === x
+          && document.querySelector("#overlay").hidden, { timeout: 120000, polling: 250 }, id);
+      }
+      const before = (await ids()).length;
+      if (k === 0) {
+        // two clicks in the same instant: the second one must be ignored
+        const disabledAtOnce = await page.evaluate(() => {
+          const b = document.querySelector("#btn-delete");
+          b.click();
+          const d = b.disabled;
+          b.click();
+          return d;
+        });
+        ensure(disabledAtOnce, "close button still enabled while closing");
+      } else {
+        await page.click("#btn-delete");
+      }
+      try {
+        await page.waitForFunction((n, x) => {
+          const left = [...document.querySelectorAll("#dataset-select option")].map((o) => o.value);
+          return left.length === n - 1 && !left.includes(x)
+            && (left.length === 0 || !document.querySelector("#btn-delete").disabled);
+        }, { timeout: 120000, polling: 250 }, before, id);
+      } catch (e) {
+        throw new Error(`after closing ${id}: ${JSON.stringify(await snapshot())}`);
+      }
     }
-    await new Promise((r) => setTimeout(r, 1000));
+    const left = await ids();
+    ensure(initialIds.every((id) => left.includes(id)), "a pre-existing dataset was closed");
     const status = await page.$eval("#status", (e) => e.textContent);
     ensure(!/erreur/i.test(status), `status shows an error: ${status}`);
     await shot("09-ferme.png");
-    return `${start} -> ${start - 1} after a double click, then all closed; status "${status.slice(0, 40)}"`;
+    return `2 datasets of the check closed (double click closed one), ${left.length} pre-existing kept`;
   });
 
   await check("no browser error during the session", async () => {

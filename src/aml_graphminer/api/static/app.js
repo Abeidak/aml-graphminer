@@ -193,7 +193,9 @@
     const hasData = items.length > 0;
     document.body.classList.toggle("no-data", !hasData);
     ["#btn-delete", "#btn-export-alerts", "#btn-export-scores"].forEach((id) => {
-      $(id).disabled = !hasData;
+      // while a close is in progress the close button stays disabled (closeDataset re-enables it
+      // once the next dataset is loaded): an enabled-looking button must never ignore a click
+      $(id).disabled = !hasData || (id === "#btn-delete" && Boolean(state.closing));
     });
     if (!hasData) {
       state.datasetId = null;

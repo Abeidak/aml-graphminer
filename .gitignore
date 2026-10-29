@@ -43,3 +43,6 @@ hub/
 why.png
 why.json
 amlgm.yaml
+
+# defence slides: npm dependencies
+paper/soutenance/node_modules/

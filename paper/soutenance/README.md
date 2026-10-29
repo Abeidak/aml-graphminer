@@ -1,15 +1,21 @@
-# Soutenance (defense slides)
+# Soutenance (defence slides)
 
-`AML-GraphMiner_soutenance.pptx` (16 slides, in French) is generated from the measured results of
-the repository — nothing is typed by hand — and can be edited freely in PowerPoint or
-LibreOffice afterwards:
+`AML-GraphMiner_soutenance.pptx` — 16 colourful, animated slides in French: large figures,
+native PowerPoint charts, icons and motif diagrams, very little text on screen. **The talk is in
+the speaker notes** of each slide (PowerPoint: *View → Notes*, or presenter view). Elements
+appear one group after another when a slide opens, and slides change with a fade.
+
+Every number comes from the result files — nothing is typed by hand:
 
 ```bash
-pip install python-pptx
-python paper/soutenance/make_slides.py   # also writes resultats_ibm.png and resultats_elliptic.png
+python paper/soutenance/make_data.py            # measured numbers -> deck_data.json
+cd paper/soutenance
+npm install                                     # pptxgenjs, react-icons, sharp (once)
+node build_deck.js                              # -> AML-GraphMiner_soutenance.pptx
+python animate.py AML-GraphMiner_soutenance.pptx  # transitions + entrance animations
 ```
 
-Sources: `benchmarks/results_parts/*/*/results.csv` (3-seed benchmark),
-`benchmarks/results_parts/hybrid/hybrid.json` (hybrid detector), `results/eda-*/summary.json`
-(data), `docs/explainability.md` (measured neighbourhood effect), `paper/figures/*.png`
-(`python paper/figures/make_figures.py`). Fill in the student's name on the title slide.
+Sources: `benchmarks/results_parts/*/*/results.csv` and `per_pattern_recall.csv`,
+`benchmarks/results_parts/hybrid/hybrid.json`, `results/eda-*/summary.json`, plus the few
+figures quoted with their source in `make_data.py` (J2 history, confidence interval, UNODC, tests).
+Before the defence: put the student's name on slide 1 and rehearse with the notes.

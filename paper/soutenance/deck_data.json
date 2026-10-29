@@ -1,0 +1,264 @@
+{
+ "benchmark": [
+  {
+   "dataset": "HI-Small",
+   "model": "gae",
+   "mean": 0.0029366118767954,
+   "std": 0.0006077256395590557
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "gat",
+   "mean": 0.4470990823684044,
+   "std": 0.007336698356725194
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "gcn",
+   "mean": 0.3738948490218283,
+   "std": 0.03106886816304572
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "hgb",
+   "mean": 0.4758290215460221,
+   "std": 0.01133601000032849
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "logreg",
+   "mean": 0.294170107324845,
+   "std": 0.0
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "patterns",
+   "mean": 0.5031823547936786,
+   "std": null
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "rf",
+   "mean": 0.499020026988468,
+   "std": 0.016832738420331457
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "sage",
+   "mean": 0.5313052554701629,
+   "std": 0.02240968715727011
+  },
+  {
+   "dataset": "HI-Small",
+   "model": "xgb",
+   "mean": 0.47358813085077006,
+   "std": 0.004825331796144393
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "gae",
+   "mean": 0.0012085314922276667,
+   "std": 0.0002739552044345282
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "gat",
+   "mean": 0.11003164593814618,
+   "std": 0.025879324155807626
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "gcn",
+   "mean": 0.07387351913525057,
+   "std": 0.02374599016844312
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "hgb",
+   "mean": 0.10632318391903367,
+   "std": 0.01573361061261644
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "logreg",
+   "mean": 0.031961900860042,
+   "std": 0.0
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "patterns",
+   "mean": 0.1885601726898129,
+   "std": null
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "rf",
+   "mean": 0.1906257845083834,
+   "std": 0.007345892314536104
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "sage",
+   "mean": 0.17640590227835298,
+   "std": 0.017976261885049718
+  },
+  {
+   "dataset": "LI-Small",
+   "model": "xgb",
+   "mean": 0.07772090788865531,
+   "std": 0.007260965764240365
+  },
+  {
+   "dataset": "elliptic",
+   "model": "gat",
+   "mean": 0.3514873292531289,
+   "std": 0.042074103553812484
+  },
+  {
+   "dataset": "elliptic",
+   "model": "gcn",
+   "mean": 0.3004450294578483,
+   "std": 0.054890487403364344
+  },
+  {
+   "dataset": "elliptic",
+   "model": "hgb",
+   "mean": 0.7898600030996206,
+   "std": 0.0042342706705820144
+  },
+  {
+   "dataset": "elliptic",
+   "model": "logreg",
+   "mean": 0.2091307806010545,
+   "std": 0.0
+  },
+  {
+   "dataset": "elliptic",
+   "model": "rf",
+   "mean": 0.7864230274242345,
+   "std": 0.0011387937381766764
+  },
+  {
+   "dataset": "elliptic",
+   "model": "sage",
+   "mean": 0.4972331499847466,
+   "std": 0.055974106963158014
+  },
+  {
+   "dataset": "elliptic",
+   "model": "xgb",
+   "mean": 0.7883312329980416,
+   "std": 0.002205192567743646
+  }
+ ],
+ "per_pattern": {
+  "HI-Small": {
+   "bipartite": 0.0,
+   "cycle": 0.633,
+   "fan_in": 0.898,
+   "fan_out": 0.736,
+   "gather_scatter": 0.172,
+   "random": 0.0,
+   "scatter_gather": 0.813,
+   "stack": 0.55
+  },
+  "LI-Small": {
+   "bipartite": 0.0,
+   "cycle": 0.372,
+   "fan_in": 0.8,
+   "fan_out": 0.86,
+   "gather_scatter": 0.105,
+   "random": 0.0,
+   "scatter_gather": 0.859,
+   "stack": 0.538
+  }
+ },
+ "hybrid": [
+  {
+   "dataset": "HI-Small",
+   "base": "rf",
+   "alone": 0.519191201556582,
+   "motifs": 0.5031823547936786,
+   "hybrid": 0.6144112616655207
+  },
+  {
+   "dataset": "HI-Small",
+   "base": "hgb",
+   "alone": 0.4840182241694832,
+   "motifs": 0.5031823547936786,
+   "hybrid": 0.6406504988398848
+  },
+  {
+   "dataset": "HI-Small",
+   "base": "sage",
+   "alone": 0.5040902291239077,
+   "motifs": 0.5031823547936786,
+   "hybrid": 0.640986633213547
+  },
+  {
+   "dataset": "LI-Small",
+   "base": "rf",
+   "alone": 0.1914603679894213,
+   "motifs": 0.18856017268981298,
+   "hybrid": 0.23638739585331503
+  },
+  {
+   "dataset": "LI-Small",
+   "base": "hgb",
+   "alone": 0.1064846211208797,
+   "motifs": 0.18856017268981298,
+   "hybrid": 0.18928232870653597
+  },
+  {
+   "dataset": "LI-Small",
+   "base": "sage",
+   "alone": 0.17540604675040503,
+   "motifs": 0.18856017268981298,
+   "hybrid": 0.18436333246069303
+  }
+ ],
+ "eda": {
+  "HI-Small": {
+   "transactions": 5078345,
+   "accounts": 515088,
+   "illicit": 5177,
+   "illicit_ratio": 0.0010194266045335635
+  },
+  "LI-Small": {
+   "transactions": 6924049,
+   "accounts": 705907,
+   "illicit": 3565,
+   "illicit_ratio": 0.0005148721506736881
+  }
+ },
+ "motif_history": [
+  {
+   "step": "Détecteurs d'origine",
+   "value": 0.005
+  },
+  {
+   "step": "Devises + contexte + ACH",
+   "value": 0.34
+  },
+  {
+   "step": "Fans plus longs + exclusions",
+   "value": 0.399
+  },
+  {
+   "step": "Relais + calibration par tranche",
+   "value": 0.503
+  }
+ ],
+ "motif_ci": [
+  0.479,
+  0.526
+ ],
+ "neighbourhood": {
+  "with": "0,988–1,000",
+  "without": "0,960–1,000"
+ },
+ "unodc": "1 600 Md $",
+ "tests": 475,
+ "coverage": 98,
+ "no_motif_share": 36
+}

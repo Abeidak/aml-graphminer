@@ -205,17 +205,34 @@
     await selectDataset(target);
   }
 
+  // An answer that arrives after the user switched to (or closed) another dataset is ignored:
+  // otherwise a slow request could fill the tables with the previous dataset's rows.
+  const stale = (id) => id !== state.datasetId;
+
+  async function fetchFor(id, path) {
+    try {
+      const data = await api(path);
+      return stale(id) ? null : data;
+    } catch (error) {
+      if (stale(id)) return null; // e.g. 404: the dataset was closed meanwhile
+      throw error;
+    }
+  }
+
   async function selectDataset(id) {
     state.datasetId = id;
     state.alerts = { offset: 0 };
     state.tx = { offset: 0 };
-    state.overview = await api(`/datasets/${id}`);
+    const overview = await fetchFor(id, `/datasets/${id}`);
+    if (!overview) return;
+    state.overview = overview;
     renderOverview(state.overview);
     fillPatternFilter();
     $("#alert-detail").replaceChildren(placeholder("Sélectionnez une alerte pour voir ses preuves et son sous-graphe."));
     $("#tx-detail").replaceChildren(placeholder("Sélectionnez une transaction pour l'expliquer."));
     $("#account-detail").replaceChildren();
     await Promise.all([loadAlerts(), loadTransactions()]);
+    if (stale(id)) return;
     const d = state.overview.dataset;
     setStatus(
       `« ${d.name} » analysé en ${d.analysis_seconds} s : ${fmt.int(d.n_alerts)} alerte(s) de motifs, ` +
@@ -258,7 +275,10 @@
   }
 
   async function closeDataset() {
-    if (!state.datasetId) return;
+    if (!state.datasetId || state.closing) return;
+    // disabled until the next dataset is loaded: a double click must not close two datasets
+    state.closing = true;
+    $("#btn-delete").disabled = true;
     try {
       await api(`/datasets/${state.datasetId}`, { method: "DELETE" });
       state.datasetId = null;
@@ -266,6 +286,9 @@
       setStatus("Jeu de données fermé.");
     } catch (error) {
       fail(error);
+    } finally {
+      state.closing = false;
+      $("#btn-delete").disabled = !state.datasetId;
     }
   }
 
@@ -914,7 +937,8 @@
     const params = new URLSearchParams({ limit: PAGE, offset: state.alerts.offset, min_score: Number($("#alert-min").value) || 0 });
     const pattern = $("#alert-pattern").value;
     if (pattern) params.set("pattern", pattern);
-    const page = await api(`/datasets/${state.datasetId}/alerts?${params}`);
+    const page = await fetchFor(state.datasetId, `/datasets/${state.datasetId}/alerts?${params}`);
+    if (!page) return;
     $("#alerts-table tbody").replaceChildren(
       ...page.items.map((a) => {
         const row = clickableRow(
@@ -986,7 +1010,8 @@
     });
     const account = $("#tx-account").value.trim();
     if (account) params.set("account", account);
-    const page = await api(`/datasets/${state.datasetId}/transactions?${params}`);
+    const page = await fetchFor(state.datasetId, `/datasets/${state.datasetId}/transactions?${params}`);
+    if (!page) return;
     $("#tx-table tbody").replaceChildren(
       ...page.items.map((t) =>
         clickableRow(

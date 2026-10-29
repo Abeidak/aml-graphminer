@@ -179,15 +179,26 @@ class GNNExplainerAdapter:  # pragma: no cover - needs torch
         Size of the explained sub-graph.
     epochs:
         Optimisation steps of the explainer.
+    top_features:
+        Number of account features reported: the feature mask learned for the sender and the
+        receiver of the explained transaction (weights in [0, 1], *kept* by the mask — unlike
+        Captum's signed attributions).
     """
 
     method = "gnnexplainer"
 
     def __init__(
-        self, trained: Any, *, hops: int = 2, max_edges: int = 80, epochs: int = 100
+        self,
+        trained: Any,
+        *,
+        hops: int = 2,
+        max_edges: int = 80,
+        epochs: int = 100,
+        top_features: int = 10,
     ) -> None:
         self.trained = trained
         self.hops, self.max_edges, self.epochs = hops, max_edges, epochs
+        self.top_features = top_features
 
     def explain(
         self, df: pd.DataFrame, tx_id: int, index: TransactionIndex | None = None
@@ -221,7 +232,8 @@ class GNNExplainerAdapter:  # pragma: no cover - needs torch
         n = view.n_tx
         mask = result.edge_mask.detach().cpu().numpy()
         edge_scores = np.maximum(mask[:n], mask[n : 2 * n])  # forward / reverse copy of every tx
-        node_scores = result.node_mask.detach().abs().sum(dim=1).cpu().numpy()
+        feature_mask = result.node_mask.detach().cpu().numpy()  # accounts x features
+        node_scores = np.abs(feature_mask).sum(axis=1)
         node_scores = node_scores / (node_scores.max() or 1.0)
         with torch.no_grad():
             score = float(
@@ -230,8 +242,23 @@ class GNNExplainerAdapter:  # pragma: no cover - needs torch
         explanation = _build_explanation(
             self.method, view, edge_scores, node_scores, score, self.trained.threshold
         )
+        explanation.features = self._feature_mask(view, feature_mask)
+        if explanation.features:
+            kept = ", ".join(f.name for f in explanation.features[:3])
+            explanation.summary += f" Account features kept by the mask: {kept}."
         explanation.summary += _neighbourhood_note(model, view)
         return explanation
+
+    def _feature_mask(self, view: _LocalView, mask: np.ndarray) -> list[FeatureImportance]:
+        """Mask weight of every feature of the sender and receiver accounts, largest first."""
+        src, dst = int(view.label_index[0, 0]), int(view.label_index[1, 0])
+        items = [
+            FeatureImportance(f"{role}.{name}", float(view.x[node, j]), float(mask[node, j]))
+            for role, node in (("sender", src), ("receiver", dst))
+            for j, name in enumerate(view.node_cols)
+        ]
+        items.sort(key=lambda f: abs(f.importance), reverse=True)
+        return items[: self.top_features]
 
 
 class AttentionExplainer:  # pragma: no cover - needs torch

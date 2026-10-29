@@ -1,0 +1,6 @@
+{
+  "name": "aml-graphminer-ui-e2e",
+  "private": true,
+  "description": "End-to-end check of the web interface in a real browser (node ui_check.js <url> <out> <csv>)",
+  "dependencies": { "puppeteer-core": "23.11.1" }
+}

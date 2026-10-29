@@ -29,7 +29,7 @@ def brute_force(groups, ts, values, window):
     return cnt, tot
 
 
-@settings(max_examples=40)
+@settings(max_examples=40, deadline=None)  # a correctness property: no timing limit
 @given(
     n=st.integers(min_value=1, max_value=40),
     n_groups=st.integers(min_value=1, max_value=4),

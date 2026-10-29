@@ -46,3 +46,6 @@ amlgm.yaml
 
 # defence slides: npm dependencies
 paper/soutenance/node_modules/
+tests/e2e/node_modules/
+tests/e2e/shots/
+tests/e2e/upload.csv

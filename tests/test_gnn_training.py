@@ -441,3 +441,21 @@ def test_cli_trains_and_serves_a_gnn(tmp_path):
     assert res.exit_code == 0, res.output
     scored = runner.invoke(main, ["score", str(tmp_path / "m"), data, "--top", "2"])
     assert scored.exit_code == 0, scored.output
+
+
+def test_gnnexplainer_reports_the_account_features_it_keeps(synth_df):
+    """The specification asks for the edges *and features* behind each GNN alert."""
+    from aml_graphminer.explainers import GNNExplainerAdapter, TransactionIndex
+
+    detector = GNNDetector.fit(synth_df, tiny_config("sage", epochs=1))
+    tx = int(synth_df.index[3100])
+    exp = GNNExplainerAdapter(detector.trained, max_edges=25, epochs=20, top_features=6).explain(
+        synth_df, tx, TransactionIndex(synth_df)
+    )
+    assert 0 < len(exp.features) <= 6
+    assert all(f.name.split(".")[0] in ("sender", "receiver") for f in exp.features)
+    assert all(0.0 <= f.importance <= 1.0 for f in exp.features)  # mask weights
+    weights = [f.importance for f in exp.features]
+    assert weights == sorted(weights, reverse=True)
+    assert "Account features kept by the mask" in exp.summary
+    assert exp.to_dict()["features"][0]["name"] == exp.features[0].name  # exported in JSON

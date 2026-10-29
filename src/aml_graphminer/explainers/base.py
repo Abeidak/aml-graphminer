@@ -45,7 +45,10 @@ class Explanation:
     """Why a transaction was (or was not) flagged.
 
     ``importance`` values are method specific but always *signed in the direction of the
-    alert*: positive → pushes the score up, negative → pushes it down.
+    alert*: positive → pushes the score up, negative → pushes it down. ``details`` holds the
+    method-specific figures quoted by ``summary`` that no other field carries (number of
+    neighbours, measured neighbourhood effect ...), so a client can word the summary itself —
+    the French web interface does.
     """
 
     tx_id: int
@@ -57,6 +60,7 @@ class Explanation:
     features: list[FeatureImportance] = field(default_factory=list)
     patterns: list[dict[str, Any]] = field(default_factory=list)
     summary: str = ""
+    details: dict[str, Any] = field(default_factory=dict)
 
     # ------------------------------------------------------------------ serialisation
     def to_dict(self) -> dict[str, Any]:
@@ -70,6 +74,7 @@ class Explanation:
             "nodes": [_round_fields(asdict(n)) for n in self.nodes],
             "features": [_round_fields(asdict(f)) for f in self.features],
             "patterns": self.patterns,
+            "details": _round_fields(self.details),
         }
 
     def to_json(self, indent: int | None = 2) -> str:
@@ -87,6 +92,7 @@ class Explanation:
             features=[FeatureImportance(**f) for f in data.get("features", [])],
             patterns=list(data.get("patterns", [])),
             summary=str(data.get("summary", "")),
+            details=dict(data.get("details", {})),
         )
 
     # ------------------------------------------------------------------ views

@@ -114,9 +114,15 @@ def neighbourhood_effect(model: Any, view: _LocalView) -> tuple[float, float]:  
     return float(full[0]), float(alone[0])
 
 
-def _neighbourhood_note(model: Any, view: _LocalView) -> str:  # pragma: no cover - needs torch
+def _note_neighbourhood(
+    explanation: Explanation, model: Any, view: _LocalView
+) -> None:  # pragma: no cover - needs torch
+    """Append the measured neighbourhood effect to the summary (and its figures to ``details``)."""
     full, alone = neighbourhood_effect(model, view)
-    return (
+    explanation.details.update(
+        neighbours=view.n_tx - 1, score_without_neighbours=alone, neighbourhood_effect=full - alone
+    )
+    explanation.summary += (
         f" Without its {view.n_tx - 1} neighbouring transactions the score would be {alone:.3f}"
         f" (measured neighbourhood effect {full - alone:+.3f})."
     )
@@ -246,7 +252,7 @@ class GNNExplainerAdapter:  # pragma: no cover - needs torch
         if explanation.features:
             kept = ", ".join(f.name for f in explanation.features[:3])
             explanation.summary += f" Account features kept by the mask: {kept}."
-        explanation.summary += _neighbourhood_note(model, view)
+        _note_neighbourhood(explanation, model, view)
         return explanation
 
     def _feature_mask(self, view: _LocalView, mask: np.ndarray) -> list[FeatureImportance]:
@@ -310,7 +316,7 @@ class AttentionExplainer:  # pragma: no cover - needs torch
         explanation = _build_explanation(
             self.method, view, edge_scores, node_scores, score, self.trained.threshold
         )
-        explanation.summary += _neighbourhood_note(model, view)
+        _note_neighbourhood(explanation, model, view)
         return explanation
 
 
@@ -439,7 +445,7 @@ class CaptumExplainerAdapter:  # pragma: no cover - needs torch + captum
                 f" Most influential feature: {top.name} (standardised value {float(top.value):.2f})"
                 f" {direction} the probability by {abs(top.importance):.3f}."
             )
-        explanation.summary += _neighbourhood_note(self.trained.model.eval(), view)
+        _note_neighbourhood(explanation, self.trained.model.eval(), view)
         return explanation
 
     def _feature_importances(
@@ -576,13 +582,15 @@ class PGExplainerAdapter:  # pragma: no cover - needs torch
         if len(edge_scores) and float(edge_scores.max() - edge_scores.min()) < 1e-3:
             # every transaction got the same mask: the prediction barely depends on the
             # neighbourhood structure (it is driven by the transaction's own features)
+            explanation.details["uniform_mask"] = float(edge_scores.mean())
             explanation.summary = (
                 f"pgexplainer: score {score:.3f}; no neighbouring transaction stands out (all masks "
                 f"≈ {float(edge_scores.mean()):.2f}): the prediction is driven by the transaction "
                 "and account features rather than by the neighbourhood — see the captum method."
             )
         explanation.summary += f" (explainer trained on {self.fitted_on} alert neighbourhoods)."
-        explanation.summary += _neighbourhood_note(model, view)
+        explanation.details["trained_on"] = self.fitted_on
+        _note_neighbourhood(explanation, model, view)
         return explanation
 
 

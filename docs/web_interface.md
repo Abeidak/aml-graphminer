@@ -4,6 +4,13 @@
 `http://HOST:PORT/ui/`. It needs only the `api` extra (no JavaScript build, no CDN: it works
 offline and inside the Docker image).
 
+The interface is in French. The API answers in English — codes (motif, explanation method,
+evidence key, attribute name, payment format, currency ...), figures and English sentences —
+and `api/static/fr.js` words all of it in French: motif descriptions and evidence, alert and
+explanation sentences, attribute names (the technical name stays in the tooltip), payment
+formats, currencies (ISO code next to an amount) and the error messages an analyst can meet;
+numbers and dates use the French format. Another language would only need another such file.
+
 ```bash
 amlgm serve --demo --open-browser                       # nothing to prepare: demo detector + synthetic data
 amlgm serve runs/hgb --data data/Synth-Small_Trans.csv  # your detector, a file analysed at start-up
@@ -42,7 +49,7 @@ The graphs are interactive: drag a node, drag the background to pan, use the mou
 ## Architecture
 
 ```text
-browser (api/static: index.html, app.js, style.css — vanilla JS, SVG)
+browser (api/static: index.html, fr.js, app.js, style.css — vanilla JS, SVG)
    │  fetch /api/...
    ▼
 FastAPI (api/app.py) ── InvestigationService (api/investigation.py, framework-free, unit-tested)

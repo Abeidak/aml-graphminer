@@ -17,7 +17,7 @@ result.to_json("alerts.json")  # alerts + summary
 |---|---|---|
 | `fan_in` | many distinct accounts pay one hub in a short window (collection) | `hub, n_counterparties, n_transactions, span_seconds, window_seconds, amount_cv, burst_ratio` |
 | `fan_out` | one account pays many distinct accounts in a short window (dispersion) | same as fan-in |
-| `smurfing` | *structuring*: many payments just below a reporting threshold; *split*: one large inflow chopped into similar parts | `mode, role, account, n_transactions, threshold, mean_amount, n_counterparties` |
+| `smurfing` | *structuring*: many payments just below a reporting threshold; *split*: one large inflow chopped into similar parts | *structuring*: `mode, role, account, n_transactions, threshold, mean_amount, n_counterparties`; *split*: `mode, account, inflow_amount, n_parts, parts_total, largest_part_fraction` |
 | `cycle` | money returns to its origin through 3–6 accounts, in time order, amounts almost conserved | `length, span_seconds, first_amount, last_amount, amount_retained, cycle` |
 | `scatter_gather` | source → *k* intermediaries → sink | `source, sink, n_intermediaries, span_seconds, dispersed_amount` |
 | `gather_scatter` | *k* sources → hub → *k′* targets with conserved volume | `hub, n_sources, n_targets, gathered_amount, scattered_amount, conservation_ratio` |

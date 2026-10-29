@@ -1,6 +1,7 @@
 /* AML-GraphMiner — web investigation interface.
  * Vanilla JavaScript, no dependency: works offline and inside the Docker image.
- * Every value coming from the data is inserted with textContent (never innerHTML). */
+ * Every value coming from the data is inserted with textContent (never innerHTML).
+ * The API answers in English with codes and figures; fr.js words them in French. */
 "use strict";
 
 (() => {
@@ -8,30 +9,8 @@
   const ROOT = window.location.pathname.replace(/\/ui(\/.*)?$/, "");
   const API = `${ROOT}/api`;
   const PAGE = 25;
-  const PATTERN_LABELS = {
-    fan_in: "Fan-in",
-    fan_out: "Fan-out",
-    smurfing: "Smurfing",
-    cycle: "Cycle",
-    scatter_gather: "Scatter-gather",
-    gather_scatter: "Gather-scatter",
-    community: "Communauté à risque",
-  };
-  const METHOD_LABELS = {
-    auto: "automatique",
-    patterns: "Preuves des motifs (exact)",
-    occlusion: "Occlusion (tout modèle)",
-    gnnexplainer: "GNNExplainer",
-    pgexplainer: "PGExplainer",
-    captum: "Captum — Integrated Gradients",
-    attention: "Attention (GAT)",
-  };
-  const MODEL_NAMES = {
-    patterns: "Motifs structurels",
-    tabular: "Modèle tabulaire",
-    gnn: "GNN supervisé",
-    gnn_unsupervised: "GNN non supervisé (auto-encodeur)",
-  };
+  const FR = window.AML_FR;
+  const fmt = FR.fmt;
   const state = {
     model: null,
     datasetId: null,
@@ -76,29 +55,7 @@
     return node;
   }
 
-  // ------------------------------------------------------------------ formatting
-  const nf = new Intl.NumberFormat("fr-FR");
-  const nf2 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const missing = (v) => v === null || v === undefined || Number.isNaN(v);
-  const fmt = {
-    int: (v) => (missing(v) ? "–" : nf.format(v)),
-    money: (v) => (missing(v) ? "–" : nf2.format(v)),
-    pct: (v, digits = 2) => (missing(v) ? "–" : `${(100 * v).toFixed(digits)} %`),
-    // tiny thresholds (gradient boosting outputs ~1e-4 for legitimate payments) stay readable
-    score: (v) => {
-      if (missing(v)) return "–";
-      const x = Number(v);
-      return x !== 0 && Math.abs(x) < 0.001 ? x.toExponential(2) : x.toFixed(3);
-    },
-    date: (v) => (v ? new Date(v).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "–"),
-    day: (v) => (v ? new Date(v).toLocaleDateString("fr-FR") : "–"),
-    pattern: (p) => PATTERN_LABELS[p] || p || "–",
-    short: (account) => {
-      const text = String(account);
-      return text.length > 16 ? `…${text.slice(-14)}` : text;
-    },
-  };
-
+  // ------------------------------------------------------------------ formatting (fmt: fr.js)
   function threshold() {
     return state.model ? state.model.threshold : 0.5;
   }
@@ -130,13 +87,15 @@
 
   // ------------------------------------------------------------------ API & feedback
   async function api(path, options = {}) {
-    const response = await fetch(`${API}${path}`, options);
+    let response;
+    try {
+      response = await fetch(`${API}${path}`, options);
+    } catch {
+      throw new Error(FR.NETWORK_ERROR); // no answer at all (offline, server asleep or stopped)
+    }
     const type = response.headers.get("content-type") || "";
     const body = type.includes("application/json") ? await response.json() : await response.text();
-    if (!response.ok) {
-      const detail = body && typeof body === "object" ? body.detail || body.error : body;
-      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
-    }
+    if (!response.ok) throw new Error(FR.errorMessage(response.status, body));
     return body;
   }
 
@@ -178,9 +137,9 @@
   async function loadModel() {
     state.model = await api("/model");
     const m = state.model.model;
-    const kind = m.kind ? ` · ${m.kind}` : "";
+    const kind = m.kind ? ` · ${FR.kindName(m.kind)}` : "";
     $("#model-badge").textContent =
-      `${MODEL_NAMES[m.model_type] || m.model_type}${kind} · seuil ${fmt.score(state.model.threshold)} · v${state.model.library_version}`;
+      `${FR.modelName(m.model_type)}${kind} · seuil ${fmt.score(state.model.threshold)} · v${state.model.library_version}`;
     renderAbout();
   }
 
@@ -188,7 +147,7 @@
     const items = await api("/datasets");
     const select = $("#dataset-select");
     select.replaceChildren(
-      ...items.map((d) => h("option", { value: d.id }, `${d.name} — ${fmt.int(d.transactions)} transactions`)),
+      ...items.map((d) => h("option", { value: d.id }, `${FR.datasetName(d)} — ${fmt.int(d.transactions)} transactions`)),
     );
     const hasData = items.length > 0;
     document.body.classList.toggle("no-data", !hasData);
@@ -237,7 +196,7 @@
     if (stale(id)) return;
     const d = state.overview.dataset;
     setStatus(
-      `« ${d.name} » analysé en ${d.analysis_seconds} s : ${fmt.int(d.n_alerts)} alerte(s) de motifs, ` +
+      `« ${FR.datasetName(d)} » analysé en ${fmt.num(d.analysis_seconds, 2)} s : ${fmt.int(d.n_alerts)} alerte(s) de motifs, ` +
         `${fmt.int(d.n_flagged)} transaction(s) signalée(s) par le modèle.`,
       "ok",
     );
@@ -301,9 +260,9 @@
   // ------------------------------------------------------------------ charts (inline SVG)
   function tickLabel(v, percent) {
     if (percent) return `${(100 * v).toFixed(0)} %`;
-    if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-    if (v >= 1e3) return `${(v / 1e3).toFixed(1)}k`;
-    return v >= 10 ? String(Math.round(v)) : v.toFixed(1);
+    if (v >= 1e6) return `${fmt.num(v / 1e6, 1)} M`;
+    if (v >= 1e3) return `${fmt.num(v / 1e3, 1)} k`;
+    return v >= 10 ? String(Math.round(v)) : fmt.num(v, 1);
   }
 
   function barChart(container, { labels, series, line = null, log = false, marker = null, overlap = false }) {
@@ -546,10 +505,10 @@
       const details = [
         `transaction ${e.id}`,
         `${e.source} → ${e.target}`,
-        `montant ${fmt.money(e.amount)}${e.currency ? ` ${e.currency}` : ""}`,
+        `montant ${fmt.amount(e.amount, e.currency)}`,
         `date ${fmt.date(e.timestamp)}`,
         e.score === null || e.score === undefined ? null : `score ${fmt.score(e.score)}`,
-        mode === "importance" ? `importance ${Number(e.importance || 0).toFixed(4)}` : null,
+        mode === "importance" ? `importance ${fmt.num(e.importance || 0, 4)}` : null,
       ].filter(Boolean);
       path.append(s("title", { text: details.join("\n") }));
       edgeLayer.append(path);
@@ -596,8 +555,8 @@
       const label = s("text", { "text-anchor": "middle", text: String(n.id).slice(-10) });
       const lines = [
         `compte ${n.id}`,
-        n.role ? `rôle : ${n.role}` : null,
-        mode === "importance" ? `importance ${Number(n.importance || 0).toFixed(4)}` : `score max ${fmt.score(n.score)}`,
+        n.role ? `rôle : ${FR.roleLabel(n.role)}` : null,
+        mode === "importance" ? `importance ${fmt.num(n.importance || 0, 4)}` : `score max ${fmt.score(n.score)}`,
         "clic : profil du compte",
       ].filter(Boolean);
       circle.append(s("title", { text: lines.join("\n") }));
@@ -765,7 +724,7 @@
 
     const hist = ov.score_histogram;
     barChart($("#chart-scores"), {
-      labels: hist.edges.slice(0, -1).map((e) => Number(e).toFixed(2)),
+      labels: hist.edges.slice(0, -1).map((e) => fmt.num(Number(e), 2)),
       series: [{ values: hist.counts, cls: "bar", name: "transactions" }],
       log: true,
       marker: { position: Math.max(0, Math.min(1, ov.threshold)), label: "seuil" },
@@ -777,7 +736,7 @@
       amountSeries.push({ values: am.illicit, cls: "bar bad", name: "blanchiment", normalise: true });
     }
     barChart($("#chart-amounts"), {
-      labels: am.log10_bins.slice(0, -1).map((e) => Number(e).toFixed(1)),
+      labels: am.log10_bins.slice(0, -1).map((e) => fmt.num(Number(e), 1)),
       series: amountSeries,
       overlap: true,
     });
@@ -785,7 +744,7 @@
     const formats = eda.payment_formats;
     hbarChart(
       $("#chart-formats"),
-      formats.map((f) => f.name),
+      formats.map((f) => FR.paymentFormat(f.name)),
       formats.map((f) => f.transactions),
       formats.map((f) => (f.illicit_rate === null ? "" : `${fmt.pct(f.illicit_rate, 2)} blanchiment`)),
     );
@@ -803,15 +762,10 @@
       );
       return;
     }
-    const rows = [
-      ["PR-AUC", "pr_auc"],
-      ["ROC-AUC", "roc_auc"],
-      ["Précision", "precision"],
-      ["Rappel", "recall"],
-      ["F1", "f1"],
-      ["Recall@k (k = nb de positifs)", "recall_at_k"],
-      ["Rappel sur le top 1 %", "recall_at_1pct"],
-    ];
+    const rows = ["pr_auc", "roc_auc", "precision", "recall", "f1", "recall_at_k", "recall_at_1pct"].map((key) => [
+      FR.metricLabel(key),
+      key,
+    ]);
     const table = h(
       "table",
       {},
@@ -899,7 +853,7 @@
               h("td", {}, t.tx_id),
               h("td", {}, fmt.date(t.timestamp)),
               h("td", {}, accountLink(t.sender), " → ", accountLink(t.receiver)),
-              h("td", { class: "num" }, `${fmt.money(t.amount)} ${t.currency}`),
+              h("td", { class: "num" }, fmt.amount(t.amount, t.currency)),
               h("td", {}, scoreCell(t.score)),
             ],
             () => openTransaction(t.tx_id),
@@ -936,7 +890,8 @@
 
   async function loadAlerts() {
     if (!state.datasetId) return;
-    const params = new URLSearchParams({ limit: PAGE, offset: state.alerts.offset, min_score: Number($("#alert-min").value) || 0 });
+    const minScore = Math.min(1, Math.max(0, Number($("#alert-min").value) || 0));
+    const params = new URLSearchParams({ limit: PAGE, offset: state.alerts.offset, min_score: minScore });
     const pattern = $("#alert-pattern").value;
     if (pattern) params.set("pattern", pattern);
     const page = await fetchFor(state.datasetId, `/datasets/${state.datasetId}/alerts?${params}`);
@@ -955,19 +910,12 @@
           ],
           (r) => showAlert(a.alert_id, r),
         );
-        row.title = a.summary;
+        row.title = FR.alertSentence(a);
         return row;
       }),
     );
     $("#alert-count").textContent = `${fmt.int(page.total)} alerte(s)`;
     pager($("#alerts-pager"), state.alerts, page.total, loadAlerts);
-  }
-
-  function evidenceValue(value) {
-    if (Array.isArray(value)) return value.join(" → ");
-    if (typeof value === "boolean") return value ? "oui" : "non";
-    if (typeof value === "number") return Number.isInteger(value) ? fmt.int(value) : Number(value).toFixed(4);
-    return String(value);
   }
 
   async function showAlert(alertId, row) {
@@ -976,10 +924,9 @@
     pane.replaceChildren(placeholder("Chargement…"));
     try {
       const a = await api(`/datasets/${state.datasetId}/alerts/${alertId}`);
-      const evidence = Object.entries(a.evidence || {}).filter(([, v]) => v === null || typeof v !== "object" || Array.isArray(v));
       pane.replaceChildren(
         h("h2", {}, `Alerte n° ${a.alert_id} — ${fmt.pattern(a.pattern)}`),
-        h("div", { class: "summary" }, a.description),
+        h("div", { class: "summary" }, `${FR.upperFirst(FR.patternDescription(a.pattern, a.description))}.`),
         h(
           "dl",
           { class: "kv" },
@@ -988,7 +935,7 @@
           kv("Montant", fmt.money(a.total_amount)),
           kv("Comptes", fmt.int(a.accounts.length)),
           kv("Transactions", fmt.int(a.tx_ids.length)),
-          evidence.map(([key, value]) => kv(key, evidenceValue(value))),
+          FR.evidenceItems(a.evidence).map(([label, value]) => kv(label, value)),
         ),
         h("h4", {}, "Sous-graphe de l'alerte"),
         graphView(a.graph, { mode: "score" }),
@@ -1022,8 +969,8 @@
             h("td", {}, fmt.date(t.timestamp)),
             h("td", {}, accountLink(t.sender)),
             h("td", {}, accountLink(t.receiver)),
-            h("td", { class: "num" }, `${fmt.money(t.amount)} ${t.currency}`),
-            h("td", {}, t.transaction_type),
+            h("td", { class: "num" }, fmt.amount(t.amount, t.currency)),
+            h("td", {}, FR.paymentFormat(t.transaction_type)),
             h("td", {}, scoreCell(t.score), " ", t.alert ? h("span", { class: "badge alert" }, "alerte") : null),
             h(
               "td",
@@ -1049,8 +996,8 @@
       const method = h(
         "select",
         { "aria-label": "Méthode d'explication" },
-        h("option", { value: "auto" }, METHOD_LABELS.auto),
-        state.model.explain_methods.map((m) => h("option", { value: m }, METHOD_LABELS[m] || m)),
+        h("option", { value: "auto" }, FR.methodLabel("auto")),
+        state.model.explain_methods.map((m) => h("option", { value: m }, FR.methodLabel(m))),
       );
       const hops = h("select", { "aria-label": "Rayon du voisinage" }, [1, 2, 3].map((k) => h("option", { value: k, selected: k === 2 }, `${k} saut(s)`)));
       const output = h("div", {});
@@ -1069,9 +1016,9 @@
           kv("Date", fmt.date(t.timestamp)),
           kv("Émetteur", accountLink(t.sender)),
           kv("Destinataire", accountLink(t.receiver)),
-          kv("Montant payé", `${fmt.money(t.amount)} ${t.currency}`),
-          kv("Montant reçu", `${fmt.money(t.amount_received)} ${t.currency_received}`),
-          kv("Format", t.transaction_type),
+          kv("Montant payé", fmt.amount(t.amount, t.currency)),
+          kv("Montant reçu", fmt.amount(t.amount_received, t.currency_received)),
+          kv("Format", FR.paymentFormat(t.transaction_type)),
           kv("Score du modèle", scoreCell(t.score)),
           kv("Décision", t.alert ? h("span", { class: "badge alert" }, "alerte") : "non signalée"),
           kv("Motif le plus fort", t.motif ? `${fmt.pattern(t.motif)} (${fmt.score(t.motif_score)})` : "aucun"),
@@ -1092,7 +1039,7 @@
                   openAlert(a.alert_id),
                 ),
                 " — ",
-                a.summary,
+                FR.alertSentence(a, { label: false }),
               ),
             ),
           ),
@@ -1116,13 +1063,15 @@
     }
   }
 
-  function importanceList(items) {
+  // items: [name shown, value, importance, tooltip of the name (default: the name)];
+  // words: names are French phrases (wrapped) rather than identifiers (one line)
+  function importanceList(items, { words = false } = {}) {
     const maxAbs = Math.max(1e-12, ...items.map(([, , v]) => Math.abs(v)));
     return h(
       "div",
-      { class: "imp" },
-      items.map(([name, value, imp]) => [
-        h("span", { class: "name", title: name }, name),
+      { class: words ? "imp words" : "imp" },
+      items.map(([name, value, imp, tooltip]) => [
+        h("span", { class: "name", title: tooltip || name }, name),
         h("span", { class: "num" }, value),
         h(
           "span",
@@ -1130,7 +1079,7 @@
           h("div", {
             class: `bar ${imp < 0 ? "neg" : ""}`,
             style: `width:${Math.max(2, (100 * Math.abs(imp)) / maxAbs).toFixed(1)}%`,
-            title: `importance ${imp >= 0 ? "+" : ""}${Number(imp).toFixed(4)}`,
+            title: `importance ${fmt.signed(imp, 4)}`,
           }),
         ),
       ]),
@@ -1149,11 +1098,11 @@
         .sort((a, b) => Math.abs(b.importance) - Math.abs(a.importance))
         .slice(0, 8);
       const parts = [
-        h("div", { class: "summary" }, `${METHOD_LABELS[e.method] || e.method} — ${e.summary}`),
+        h("div", { class: "summary" }, `${FR.methodLabel(e.method)} — ${FR.explanationSummary(e)}`),
         graphView(e.graph, { mode: "importance" }),
       ];
       if (e.patterns && e.patterns.length) {
-        parts.push(h("h4", {}, "Motifs impliqués"), h("ul", { class: "links" }, e.patterns.map((p) => h("li", {}, p.description || p.pattern))));
+        parts.push(h("h4", {}, "Motifs impliqués"), h("ul", { class: "links" }, e.patterns.map((p) => h("li", {}, FR.alertSentence(p)))));
       }
       if (neighbours.length) {
         parts.push(
@@ -1164,7 +1113,10 @@
       if (e.features && e.features.length) {
         parts.push(
           h("h4", {}, "Attributs les plus influents"),
-          importanceList(e.features.map((f) => [f.name, typeof f.value === "number" ? Number(f.value).toFixed(2) : String(f.value), f.importance])),
+          importanceList(
+            e.features.map((f) => [FR.upperFirst(FR.featureLabel(f.name)), FR.featureValue(f), f.importance, `nom technique : ${f.name}`]),
+            { words: true },
+          ),
         );
       }
       output.replaceChildren(...parts);
@@ -1222,25 +1174,34 @@
   // ------------------------------------------------------------------ about
   function renderAbout() {
     const m = state.model;
-    const describe = (v) => (Array.isArray(v) ? v.join(", ") : v && typeof v === "object" ? JSON.stringify(v) : String(v));
-    const entries = Object.entries(m.model).filter(([key]) => key !== "metrics");
+    const hidden = ["model_type", "metrics", "component_metrics"];
+    const entries = Object.entries(m.model).filter(([key]) => !hidden.includes(key));
     const box = $("#about-model");
     box.replaceChildren(
       h(
         "dl",
         { class: "kv" },
-        kv("Type", MODEL_NAMES[m.model.model_type] || m.model.model_type),
-        entries.filter(([key]) => key !== "model_type").map(([key, value]) => kv(key, describe(value))),
-        kv("Explications", m.explain_methods.map((x) => METHOD_LABELS[x] || x).join(", ")),
+        kv("Type", FR.modelName(m.model.model_type)),
+        entries.map(([key, value]) => kv(...FR.modelField(key, value))),
+        kv("Explications", m.explain_methods.map(FR.methodLabel).join(", ")),
         kv("Version", m.library_version),
       ),
     );
     const metrics = m.model.metrics || {};
     const keys = ["pr_auc", "roc_auc", "f1", "precision", "recall", "recall_at_k"].filter((k) => k in metrics);
     if (keys.length) {
-      box.append(h("h4", {}, "Métriques de test enregistrées avec le modèle"), h("dl", { class: "kv" }, keys.map((k) => kv(k, fmt.score(metrics[k])))));
+      box.append(
+        h("h4", {}, "Métriques de test enregistrées avec le modèle"),
+        h("dl", { class: "kv" }, keys.map((k) => kv(FR.metricLabel(k), fmt.score(metrics[k])))),
+      );
     }
-    $("#about-patterns").replaceChildren(h("dl", { class: "kv" }, Object.entries(m.patterns).map(([key, text]) => kv(fmt.pattern(key), text))));
+    $("#about-patterns").replaceChildren(
+      h(
+        "dl",
+        { class: "kv" },
+        Object.entries(m.patterns).map(([key, text]) => kv(fmt.pattern(key), `${FR.upperFirst(FR.patternDescription(key, text))}.`)),
+      ),
+    );
   }
 
   // ------------------------------------------------------------------ start

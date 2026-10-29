@@ -78,7 +78,9 @@ jobs:
           tests/test_baselines_and_tracking.py tests/test_cli.py tests/test_neo4j_and_datasets.py
           tests/test_eda.py
       - name: Web interface scripts are valid JavaScript
-        run: node --check src/aml_graphminer/api/static/app.js
+        run: |
+          node --check src/aml_graphminer/api/static/fr.js
+          node --check src/aml_graphminer/api/static/app.js
 
   test-gnn:
     name: GNN tests (CPU PyTorch + PyG)

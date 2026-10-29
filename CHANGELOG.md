@@ -65,6 +65,13 @@ IBM AML *LI-Small* and *HI-Small*).
 - **Acceptance checks** of a running service: `scripts/check_service.py` (every REST route,
   uploads, exports, error codes) and `tests/e2e/ui_check.js` (the web interface driven in a
   headless browser).
+- **Web interface in French throughout**: `api/static/fr.js` words in French what the API sends
+  in English (motif descriptions and evidence, alert and explanation sentences, attribute
+  names, payment formats, currencies, error messages, demo dataset name), numbers in the
+  French format. The API now gives the figures behind its English sentences: `details` of an
+  explanation (neighbours, measured neighbourhood effect, PGExplainer training set), `evidence`
+  of the listed alerts, `origin` of a dataset. `tests/test_web_texts.py` runs `fr.js` with
+  Node.js on real answers of the API and `ui_check.js` fails on any English word in the page.
 
 ### Fixed
 
@@ -142,6 +149,8 @@ IBM AML *LI-Small* and *HI-Small*).
   close two datasets.
 - CLI on Windows: an output redirected to a file or a pipe (legacy code page) failed with
   `UnicodeEncodeError` on the arrow of the explanations and wrote nothing.
+- The *relay* motif had no description, the *smurfing* one ignored the *split* mode, and
+  `/api/model` listed motifs the service does not look for (relay is opt-in).
 
 ### Known limitations
 

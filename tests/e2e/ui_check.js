@@ -6,7 +6,8 @@
 //
 // Drives every tab and action of /ui/ (demo dataset, dashboard, alerts and their sub-graph, each
 // explanation method, sorting, account profile, CSV downloads, upload, close) and fails on any
-// console error, page error or failed request. Screenshots of every step go to <screenshot dir>.
+// console error, page error, failed request or English text left in the page (the API answers
+// in English, fr.js words it in French). Screenshots of every step go to <screenshot dir>.
 const fs = require("fs");
 const path = require("path");
 const puppeteer = require("puppeteer-core");
@@ -35,6 +36,16 @@ async function check(name, fn) {
   }
 }
 const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
+// English words of the API (summaries, codes, data values) that must not reach the interface
+const ENGLISH = new RegExp(
+  String.raw`\b(the|and|with|without|of|to|from|is|would|this|which|money|accounts?|amounts?|sends?|receives?|` +
+    String.raw`neighbou?r\w*|raises|lowers|structural|unknown|missing|expected|seed|synthetic|threshold|transfers?|` +
+    String.raw`split|hub|most|influential|features?|sender|receiver|relay|got|file|columns?|found|larger|exceed|` +
+    String.raw`Cheque|Credit Card|Wire|Reinvestment|Cash|US Dollar|Swiss Franc|Canadian Dollar)\b` +
+    String.raw`|\b[a-z]+_[a-z_]+\b`, // a raw snake_case code
+  "gi",
+);
+const englishSeen = new Map(); // English word -> where it was seen
 
 (async () => {
   const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ["--no-first-run"] });
@@ -60,6 +71,19 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
   const shot = (name) => page.screenshot({ path: path.join(OUT, name), fullPage: false });
   const idle = () => page.waitForFunction(() => document.querySelector("#overlay").hidden, { polling: 200 });
   const tab = async (name) => { await page.click(`button[data-tab="${name}"]`); await page.waitForSelector(`#tab-${name}.active`); };
+  // visible text, tooltips (except the technical names of attributes) and options of the page
+  const scanEnglish = async (where) => {
+    const texts = await page.evaluate(() => [
+      document.body.innerText,
+      ...[...document.querySelectorAll("[title]")].map((e) => e.title).filter((t) => !t.startsWith("nom technique")),
+      ...[...document.querySelectorAll("svg title, option")].map((e) => e.textContent),
+    ]);
+    for (const text of texts) {
+      for (const m of text.matchAll(ENGLISH)) {
+        if (!englishSeen.has(m[0])) englishSeen.set(m[0], `${where}: …${text.slice(Math.max(0, m.index - 50), m.index + 50)}…`);
+      }
+    }
+  };
 
   await check("page loads, detector badge", async () => {
     await page.goto(`${BASE}/ui/`, { waitUntil: "networkidle0" });
@@ -76,6 +100,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     await page.waitForFunction(() => ["#chart-daily", "#chart-patterns", "#chart-scores", "#chart-amounts", "#chart-formats"]
       .every((s) => document.querySelector(s).children.length > 0));
     await shot("02-tableau-de-bord.png");
+    await scanEnglish("dashboard");
     const kpis = await page.$$eval("#kpis > *", (els) => els.length);
     const metrics = await page.$eval("#metrics", (e) => e.textContent.trim().length);
     ensure(metrics > 0, "no metrics");
@@ -89,6 +114,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     await page.click("#alerts-table tbody tr");
     await page.waitForSelector("#alert-detail svg");
     await shot("03-alertes.png");
+    await scanEnglish("alerts");
     const options = await page.$$eval("#alert-pattern option", (os) => os.map((o) => o.value).filter(Boolean));
     await page.select("#alert-pattern", options[0]);
     await page.waitForFunction((b) => document.querySelector("#alert-count").textContent !== b, {}, before);
@@ -104,6 +130,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     await page.waitForSelector("#tx-detail .summary");
     await page.waitForSelector("#tx-detail svg");
     await shot("04-transaction.png");
+    await scanEnglish("transaction");
     return (await page.$eval("#tx-detail .summary", (e) => e.textContent)).slice(0, 110);
   });
 
@@ -121,6 +148,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
       await page.waitForSelector("#tx-detail svg");
       const heads = await page.$$eval("#tx-detail h4", (hs) => hs.map((x) => x.textContent));
       await shot(`05-explication-${m}.png`);
+      await scanEnglish(`explanation ${m}`);
       methodsDone.push(m);
       return heads.join(" | ");
     });
@@ -148,6 +176,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     await page.keyboard.press("Enter");
     await page.waitForSelector("#account-detail svg");
     await shot("06-compte.png");
+    await scanEnglish("account");
     return `account ${target}: ${(await page.$eval("#account-detail", (e) => e.textContent)).slice(0, 80)}`;
   });
 
@@ -155,6 +184,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     await tab("about");
     await page.waitForFunction(() => document.querySelector("#about-model").textContent.trim().length > 0);
     await shot("07-a-propos.png");
+    await scanEnglish("about");
     return `${await page.$$eval("#about-patterns li, #about-patterns tr, #about-patterns dt", (x) => x.length)} motif entries`;
   });
 
@@ -179,6 +209,7 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     await idle();
     await page.waitForFunction(() => document.querySelectorAll("#kpis > *").length > 0);
     await shot("08-fichier-charge.png");
+    await scanEnglish("uploaded file");
     return `${before} -> ${await page.$$eval("#dataset-select option", (os) => os.length)} datasets`;
   });
 
@@ -228,6 +259,12 @@ const ensure = (cond, msg) => { if (!cond) throw new Error(msg); };
     ensure(!/erreur/i.test(status), `status shows an error: ${status}`);
     await shot("09-ferme.png");
     return `2 datasets of the check closed (double click closed one), ${left.length} pre-existing kept`;
+  });
+
+  await check("the interface is in French (no English text from the API)", async () => {
+    const left = [...englishSeen.values()];
+    ensure(left.length === 0, left.slice(0, 5).join(" || "));
+    return "dashboard, alerts, transactions, every explanation, account, about: no English word";
   });
 
   await check("no browser error during the session", async () => {

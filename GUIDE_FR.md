@@ -49,7 +49,10 @@ amlgm serve --demo --open-browser
 ```
 
 Le navigateur s'ouvre sur <http://127.0.0.1:8000/ui/> (premier lancement : ~10 s pour entraîner un
-petit détecteur de démonstration). Ce que vous pouvez montrer au jury :
+petit détecteur de démonstration). L'interface est entièrement en français : l'API répond en
+anglais (codes, chiffres, phrases) et le fichier `api/static/fr.js` rédige en français les
+descriptions et preuves des motifs, les explications, les noms d'attributs, les formats de
+paiement, les devises et les messages d'erreur. Ce que vous pouvez montrer au jury :
 
 1. **Vue d'ensemble** : indicateurs clés, transactions par jour, alertes par motif, distribution
    des scores avec le seuil, montants, formats de paiement, métriques (PR-AUC, F1, rappel…).

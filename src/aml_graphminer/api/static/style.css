@@ -167,6 +167,7 @@ body.no-data .empty { display: block; }
 .explain-bar select { min-width: 160px; }
 .imp { display: grid; grid-template-columns: minmax(120px, 1.2fr) 70px minmax(80px, 1fr); gap: 4px 8px; align-items: center; font-size: 12px; }
 .imp .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); }
+.imp.words .name { white-space: normal; font-family: inherit; } /* attribute names in French: wrap */
 .imp .bar { height: 8px; border-radius: 4px; background: var(--primary); }
 .imp .bar.neg { background: var(--edge); }
 

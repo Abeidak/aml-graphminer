@@ -50,7 +50,8 @@ def test_web_interface_is_served(client):
     assert root.status_code in (302, 307) and root.headers["location"].endswith("/ui/")
     page = client.get("/ui/")
     assert page.status_code == 200 and "AML-GraphMiner" in page.text and "app.js" in page.text
-    for asset, kind in (("app.js", "javascript"), ("style.css", "css")):
+    assert page.text.index("fr.js") < page.text.index("app.js")  # texts loaded first
+    for asset, kind in (("fr.js", "javascript"), ("app.js", "javascript"), ("style.css", "css")):
         res = client.get(f"/ui/{asset}")
         assert res.status_code == 200 and kind in res.headers["content-type"]
     assert client.get("/health").json()["explain_methods"] == ["occlusion"]

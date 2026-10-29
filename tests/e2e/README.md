@@ -14,4 +14,5 @@ node ui_check.js http://127.0.0.1:8000 shots upload.csv
 ```
 
 They are not part of `pytest` (they need a server, and the second one a browser). The datasets
-they create on the server are deleted at the end.
+they create on the server are deleted at the end. The browser check also fails on any English
+word left in the page (visible text, tooltips, options): the interface is in French.

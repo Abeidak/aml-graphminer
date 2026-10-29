@@ -88,6 +88,15 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
      double clic dans l'interface web, CLI Windows qui échouait sur une sortie redirigée ;
    - **plugin Jupyter** ajouté (dernier écart avec le CDC §1.4) : affichage riche des résultats,
      `%amlgm`, `%aml_scan`, `%aml_explain`, notebook 05.
+7. 29/10 : **interface web entièrement en français**. L'API répond en anglais ; le fichier
+   `api/static/fr.js` rédige en français les descriptions et preuves des motifs, les phrases
+   d'alerte et d'explication (5 méthodes), les noms d'attributs, les formats de paiement, les
+   devises, les messages d'erreur et le nom du jeu de démonstration ; nombres au format français.
+   L'API fournit désormais les chiffres de ses phrases (`details` des explications, `evidence`
+   des alertes listées, `origin` des jeux de données). Contrôles : `tests/test_web_texts.py`
+   (fr.js exécuté par Node.js sur de vraies réponses de l'API) et un contrôle « aucun mot
+   anglais » dans `tests/e2e/ui_check.js` : 17/17 en local avec GAT, 14/14 avec le détecteur de
+   motifs.
 
 ## 6. Ce qui reste
 

@@ -35,7 +35,7 @@ with the **evaluation protocol built in**:
   GNNExplainer, PGExplainer, Captum attributions and attention weights, each GNN explanation
   reporting the *measured* effect of the neighbourhood on the score (on the IBM AML models it is
   small: Captum's feature attributions are then the informative view);
-* a **web investigation interface** (dashboard, alerts with their sub-graph, explained
+* a **web investigation interface** in French (dashboard, alerts with their sub-graph, explained
   transactions, account profiles), a **REST API** (OpenAPI 3.1), the `amlgm` **command line**, a
   **Jupyter plugin** (alerts and explanations displayed as tables and graphs, `%amlgm` magics),
   **MLflow** tracking, **Hugging Face Hub** export and a **Neo4j** export;

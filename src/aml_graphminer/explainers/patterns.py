@@ -12,11 +12,15 @@ from .base import EdgeImportance, Explanation, NodeImportance
 PATTERN_DESCRIPTIONS: dict[str, str] = {
     "fan_out": "one account sends money to many accounts in a short time (dispersion)",
     "fan_in": "many accounts send money to one account in a short time (collection)",
-    "smurfing": "many transfers just below a reporting threshold (structuring)",
+    "smurfing": (
+        "many transfers just below a reporting threshold (structuring), or one inflow forwarded "
+        "in small parts (splitting)"
+    ),
     "cycle": "money returns to its origin through a chain of accounts (round-tripping)",
     "scatter_gather": "money is split across intermediaries then re-grouped at a final account",
     "gather_scatter": "money is collected by a hub then redistributed to other accounts",
     "community": "a small group of pass-through accounts moves money mostly among themselves",
+    "relay": "an account forwards almost at once nearly all it has just received (pass-through)",
 }
 
 _SCALARS = (int, float, str, bool)

@@ -12,7 +12,7 @@ returns *scored, explained* alerts. It combines
   auto-encoder**, trained on leak-free, time-aware features,
 * **explanations** an investigator can audit (pattern evidence, occlusion, GNNExplainer,
   PGExplainer, Captum attributions, attention weights),
-* a **web investigation interface**, a **command line** (`amlgm`), a **REST API**, a
+* a **web investigation interface** (in French), a **command line** (`amlgm`), a **REST API**, a
   **Jupyter plugin**, **MLflow** tracking, **Hugging Face Hub** export and a **Neo4j** export,
   all on top of the same Python SDK.
 

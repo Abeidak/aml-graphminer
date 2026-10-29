@@ -57,13 +57,13 @@ detectors are run and the detector scores every transaction). At most 5 investig
 
 | method | path | answer |
 |---|---|---|
-| GET | `/api/model` | loaded detector, threshold, explanation methods, motif descriptions |
-| GET | `/api/datasets` | the investigations in memory |
+| GET | `/api/model` | loaded detector, threshold, explanation methods, descriptions of the motifs looked for |
+| GET | `/api/datasets` | the investigations in memory, with their `origin` (`{"type": "demo", "seed": 3}`, `{"type": "file"}` or `{"type": "table"}`) |
 | POST | `/api/datasets/demo` | analyse a synthetic dataset (`{"accounts": 1500, "background": 15000, "illicit_ratio": 0.02, "seed": 0}`) |
 | POST | `/api/datasets/upload` | analyse an uploaded file (multipart: `file`, `schema` = `auto`, `ibm` or `canonical`) |
 | GET | `/api/datasets/{id}` | dashboard: statistics (EDA), alerts per motif, score histogram, metrics when labelled |
 | DELETE | `/api/datasets/{id}` | drop an investigation |
-| GET | `/api/datasets/{id}/alerts` | motif alerts, best first (`pattern`, `min_score`, `limit`, `offset`) |
+| GET | `/api/datasets/{id}/alerts` | motif alerts with their evidence, best first (`pattern`, `min_score`, `limit`, `offset`) |
 | GET | `/api/datasets/{id}/alerts/{alert_id}` | evidence, transactions and sub-graph of one alert |
 | GET | `/api/datasets/{id}/transactions` | scored transactions (`sort` = `score`/`amount`/`timestamp`, `descending`, `account`, `only_alerts`, `pattern`, `limit`, `offset`) |
 | GET | `/api/datasets/{id}/transactions/{tx}` | one transaction and the alerts that contain it |
@@ -74,6 +74,10 @@ detectors are run and the detector scores every transaction). At most 5 investig
 
 Unknown datasets, transactions, alerts or accounts return HTTP 404 with
 `{"error": "not_found", "detail": "..."}`.
+
+Next to its English sentences (`summary`, `description`) every answer carries the codes and
+figures they are made of — evidence of the alerts, `details` of an explanation — so a client
+can word them in its own language: the web interface does it in French (`api/static/fr.js`).
 
 ```bash
 curl -s -X POST localhost:8000/api/datasets/demo -H 'content-type: application/json' -d '{"seed": 3}'

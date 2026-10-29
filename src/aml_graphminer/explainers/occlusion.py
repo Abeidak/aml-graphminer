@@ -103,6 +103,7 @@ class OcclusionExplainer:
             edges=edges,
             nodes=nodes,
             features=features,
+            details={"neighbours": len(context)},
         )
         explanation.summary = _summary(explanation, len(context))
         return explanation

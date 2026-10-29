@@ -271,6 +271,7 @@ def main(argv: list[str] | None = None) -> int:
         state["ds"] = d["id"]
         c.created.append(d["id"])
         ensure(d["transactions"] > 0 and d["n_alerts"] > 0, "empty demo")
+        ensure(d["origin"] == {"type": "demo", "seed": 3}, f"origin {d.get('origin')}")
         listed = {x["id"] for x in c.json(c.get("/api/datasets"))}
         ensure(d["id"] in listed, "demo not listed")
         return (
@@ -288,6 +289,7 @@ def main(argv: list[str] | None = None) -> int:
     def alerts() -> str:
         a = c.json(c.get(f"/api/datasets/{state['ds']}/alerts", params={"limit": 5}))
         ensure(a["total"] > 0 and len(a["items"]) <= 5, "pagination")
+        ensure(all(x["evidence"] for x in a["items"]), "alerts listed without their evidence")
         pattern = a["items"][0]["pattern"]
         f = c.json(
             c.get(f"/api/datasets/{state['ds']}/alerts", params={"pattern": pattern, "limit": 500})
@@ -355,6 +357,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 exp, graph = r, r["graph"]  # the explanation, plus the graph to draw
                 ensure(exp["summary"] and graph["nodes"], "empty explanation / graph")
+                ensure(isinstance(exp.get("details"), dict), "no details (figures of the summary)")
                 json.loads(json.dumps(r))
                 return f"{exp['method']}: graph of {len(graph['nodes'])} accounts, {len(graph['edges'])} transactions"
 
@@ -415,10 +418,10 @@ def main(argv: list[str] | None = None) -> int:
         # resources loaded from another site (the SVG namespace URL is a name, not a download)
         external = re.findall(r"""(?:src|href)\s*=\s*["']https?://[^"']+""", r.text)
         ensure(not external, f"external resources {external}")
-        for asset in ("app.js", "style.css"):
+        for asset in ("fr.js", "app.js", "style.css"):
             a = c.get(f"/ui/{asset}")
             ensure(a.status_code == 200 and len(a.text) > 1000, f"{asset} -> {a.status_code}")
-        return "page, script and style served; no external resource (works offline)"
+        return "page, scripts and style served; no external resource (works offline)"
 
     c.run("ui", "GET / -> /ui/ (assets)", ui)
 

@@ -59,6 +59,9 @@ class Investigation:
     seconds: float
     index: TransactionIndex | None = None
     alerts_by_tx: dict[int, list[int]] = field(default_factory=dict)
+    # where the table comes from: {"type": "demo", "seed": 3}, {"type": "file"} or
+    # {"type": "table"}; lets a client name a demo in its own language
+    origin: dict[str, Any] = field(default_factory=lambda: {"type": "table"})
 
     def transaction_index(self) -> TransactionIndex:
         if self.index is None:
@@ -108,7 +111,13 @@ class InvestigationService:
         self._items: OrderedDict[str, Investigation] = OrderedDict()
 
     # ------------------------------------------------------------------ datasets
-    def add(self, df: pd.DataFrame, name: str = "dataset") -> dict[str, Any]:
+    def add(
+        self,
+        df: pd.DataFrame,
+        name: str = "dataset",
+        *,
+        origin: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Analyse a canonical transaction table and keep it as a new investigation."""
         if len(df) == 0:
             raise ConfigError("the table contains no transaction")
@@ -136,6 +145,7 @@ class InvestigationService:
             tx_pattern=np.asarray(tx_pattern, dtype=object),
             tx_motif_score=np.asarray(motif_scores, dtype="float64"),
             seconds=time.perf_counter() - start,
+            origin=origin or {"type": "table"},
         )
         position = pd.Index(df.index)
         for alert_id, alert in enumerate(scan.alerts):
@@ -153,7 +163,7 @@ class InvestigationService:
         """Load a CSV / JSON / Parquet file (IBM AML or canonical columns) and analyse it."""
         path = Path(path)
         df = load_dataset(path, schema=schema)
-        return self.add(df, name or path.name)
+        return self.add(df, name or path.name, origin={"type": "file"})
 
     def add_upload(self, content: bytes, filename: str, *, schema: str = "auto") -> dict[str, Any]:
         """Same as :meth:`add_file` for the bytes of an uploaded file."""
@@ -183,7 +193,7 @@ class InvestigationService:
         if not 0.0 < illicit_ratio < 0.5:
             raise ConfigError("illicit_ratio must be in (0, 0.5)")
         df = generate_transactions(accounts, background, illicit_ratio=illicit_ratio, seed=seed)
-        return self.add(df, f"synthetic demo (seed {seed})")
+        return self.add(df, f"synthetic demo (seed {seed})", origin={"type": "demo", "seed": seed})
 
     def datasets(self) -> list[dict[str, Any]]:
         """Summaries of the investigations in memory, most recent first."""
@@ -214,6 +224,7 @@ class InvestigationService:
                 "n_alerts": len(item.scan.alerts),
                 "n_flagged": int((item.scores >= self.detector.threshold).sum()),
                 "analysis_seconds": round(item.seconds, 2),
+                "origin": item.origin,
             }
         )
 
@@ -225,7 +236,10 @@ class InvestigationService:
                 "model": self.detector.describe(),
                 "threshold": self.detector.threshold,
                 "explain_methods": available_methods(self.detector),
-                "patterns": PATTERN_DESCRIPTIONS,
+                # the motifs this service looks for (relay is opt-in, for example)
+                "patterns": {
+                    name: PATTERN_DESCRIPTIONS.get(name, name) for name in self.scanner.detectors
+                },
             }
         )
 
@@ -285,6 +299,7 @@ class InvestigationService:
                         "start": a.start,
                         "end": a.end,
                         "total_amount": a.total_amount,
+                        "evidence": a.evidence,
                         "summary": describe_alert(a),
                     }
                     for i, a in page
@@ -357,6 +372,7 @@ class InvestigationService:
                 "alert_id": a,
                 "pattern": item.scan.alerts[a].pattern,
                 "score": item.scan.weight(item.scan.alerts[a]),
+                "evidence": item.scan.alerts[a].evidence,
                 "summary": describe_alert(item.scan.alerts[a]),
             }
             for a in item.alerts_by_tx.get(pos, [])

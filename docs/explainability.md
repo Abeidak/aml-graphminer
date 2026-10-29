@@ -3,7 +3,9 @@
 A score is not an investigation. Every method below returns the same `Explanation` object:
 the transaction, its score and threshold, the neighbouring **transactions** and **accounts**
 with a signed importance (positive = pushes the score up), optional raw-**attribute**
-sensitivities, the structural **patterns** involved and a one-sentence summary. It can be
+sensitivities, the structural **patterns** involved and a one-sentence summary (with, in
+`details`, the figures it quotes that no other field holds: number of neighbours, measured
+neighbourhood effect, PGExplainer training set). It can be
 printed (`to_markdown()`), stored (`to_json()`), turned into a NetworkX graph
 (`to_networkx()`) and drawn (`plot_explanation`).
 

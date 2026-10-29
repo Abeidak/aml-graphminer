@@ -96,7 +96,7 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
    des alertes listées, `origin` des jeux de données). Contrôles : `tests/test_web_texts.py`
    (fr.js exécuté par Node.js sur de vraies réponses de l'API) et un contrôle « aucun mot
    anglais » dans `tests/e2e/ui_check.js` : 17/17 en local avec GAT, 14/14 avec le détecteur de
-   motifs.
+   motifs, **13/13 sur Render** après déploiement (API : 25/25 sur Render).
 
 ## 6. Ce qui reste
 

@@ -591,6 +591,13 @@ def _demo_model() -> Path:
     help="Analyse a synthetic demo dataset at start-up; without MODEL_DIR a demo detector is trained.",
 )
 @click.option("--open-browser", is_flag=True, help="Open the web interface in the default browser.")
+@click.option(
+    "--max-upload-mb",
+    type=click.IntRange(1, 4096),
+    default=512,
+    show_default=True,
+    help="Largest file the web interface accepts (keep it small on a public demo).",
+)
 def serve(
     model_dir: str | None,
     host: str,
@@ -598,6 +605,7 @@ def serve(
     data_files: tuple[str, ...],
     demo: bool,
     open_browser: bool,
+    max_upload_mb: int,
 ) -> None:
     """Serve a detector: REST API + web investigation interface at http://HOST:PORT/ui/.
 
@@ -613,7 +621,9 @@ def serve(
     uvicorn = require("uvicorn", "api", "the REST API")
     if model_dir is None:
         model_dir = str(_demo_model())
-    app = create_app(model_dir, datasets=list(data_files), demo=demo)
+    app = create_app(
+        model_dir, datasets=list(data_files), demo=demo, max_upload_mb=max_upload_mb
+    )
     shown = "127.0.0.1" if host in ("0.0.0.0", "::") else host
     url = f"http://{shown}:{port}/ui/"
     click.echo(f"web interface: {url}")

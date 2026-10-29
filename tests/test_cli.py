@@ -293,6 +293,17 @@ def test_serve_command(workspace, monkeypatch):
     assert res.exit_code == 0, res.output
     assert "http://127.0.0.1:8000/ui/" in res.output
 
+    # a public demo caps the size of uploaded files
+    from fastapi.testclient import TestClient
+
+    res = run("serve", "--demo", "--max-upload-mb", 1)
+    assert res.exit_code == 0, res.output
+    big = ("x" * (2 * 1024 * 1024)).encode()
+    reply = TestClient(launched["app"]).post(
+        "/api/datasets/upload", files={"file": ("big.csv", big, "text/csv")}
+    )
+    assert reply.status_code == 422 and "1 MB" in reply.text
+
 
 def test_demo_model_is_trained_once(tmp_path, monkeypatch):
     import tempfile

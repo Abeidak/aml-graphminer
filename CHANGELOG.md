@@ -113,6 +113,9 @@ IBM AML *LI-Small* and *HI-Small*).
   `scatter_lead`, scanner `exclude` (self-transfers, same bank, cross-currency) and `combine`
   (`max` / `noisy_or`), `PatternScanner.calibrate` on an existing scan; per-motif recall maps
   *stack* to `relay`.
+- **Free cloud deployment of the API** (deliverable L3): `scripts/deploy_space.py` publishes the
+  REST API + web interface demo as a Hugging Face Docker Space (port 7860, user 1000);
+  `amlgm serve --max-upload-mb` caps uploads on a public demo.
 - **Hybrid detector** (`HybridDetector`, `amlgm train --model hybrid --base DIR`, benchmark model
   `hybrid-<model>`): a saved model stacked with the motif scanner by a logistic regression fitted
   on the validation slice, with the test metrics of the model alone and of the motifs alone.

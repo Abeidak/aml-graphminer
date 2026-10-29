@@ -124,3 +124,21 @@ def test_py2nb_reports_the_failing_cell(scripts, tmp_path):
     cells = scripts["py2nb"].parse_percent("# %%\nraise ValueError('boom')\n")
     with pytest.raises(RuntimeError, match="cell 0 failed"):
         scripts["py2nb"].execute_cells(cells, tmp_path)
+
+
+def test_deploy_space_stages_a_docker_space(tmp_path):
+    sys.path.insert(0, str(ROOT / "scripts"))
+    try:
+        deploy_space = importlib.import_module("deploy_space")
+    finally:
+        sys.path.remove(str(ROOT / "scripts"))
+    out = tmp_path / "space"
+    assert deploy_space.main(["--repo-id", "me/demo", "--dry-run", "--out", str(out)]) == 0
+    card = (out / "README.md").read_text(encoding="utf-8")
+    assert card.startswith("---") and "sdk: docker" in card and "app_port: 7860" in card
+    docker = (out / "Dockerfile").read_text(encoding="utf-8")
+    assert "--uid 1000" in docker and '"7860"' in docker and '"--max-upload-mb", "20"' in docker
+    assert (out / "pyproject.toml").exists() and (
+        out / "src" / "aml_graphminer" / "cli.py"
+    ).exists()
+    assert not list((out / "src").rglob("__pycache__"))

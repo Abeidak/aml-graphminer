@@ -17,7 +17,7 @@ transactions accepts `--schema [auto|ibm|canonical]`, `--nrows N` and `--pattern
 | `amlgm explain MODEL_DIR DATA --top K --out-dir DIR` | explain the K highest-scored alerts in one go (case file: one JSON + Markdown per alert, `index.csv`, `README.md`) | same `--method` / `--hops` / `--max-edges` |
 | `amlgm benchmark DATA` | motifs vs. tabular vs. GNNs vs. auto-encoder on a temporal split | `--models` (repeat), `--seeds` (repeat), `--out`, `--dataset-name`, `--mlflow` |
 | `amlgm elliptic DIR` | Elliptic node-classification benchmark | `--models`, `--seeds`, `--out` |
-| `amlgm serve [MODEL_DIR]` | REST API + web investigation interface (`/ui/`) | `--demo`, `--data FILE` (repeat), `--host`, `--port`, `--open-browser` |
+| `amlgm serve [MODEL_DIR]` | REST API + web investigation interface (`/ui/`) | `--demo`, `--data FILE` (repeat), `--host`, `--port`, `--open-browser`, `--max-upload-mb` |
 | `amlgm export-neo4j DATA OUT_DIR` | CSV + Cypher scripts for Neo4j, optionally loaded into a database | `--model`, `--scan/--no-scan`, `--push`, `--uri`, `--user`, `--password`, `--database` |
 | `amlgm export-hub MODEL_DIR OUT_DIR` | model repository with a generated model card | `--repo-id`, `--push`, `--token` |
 

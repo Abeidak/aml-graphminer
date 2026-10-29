@@ -225,13 +225,32 @@ L'état complet du projet (fait / reste à faire, résultats) est tenu dans
 |---|---|
 | L1 — dépôt GitHub (MIT) | fait : https://github.com/Abeidak/aml-graphminer (privé). Reste : renseigner auteurs / e-mails / ORCID dans `pyproject.toml` et `CITATION.cff`, puis rendre le dépôt public (*Settings* → *Change visibility*) ; la CI démarre à chaque `git push` |
 | L2 — PyPI | créer le projet sur pypi.org, configurer le *trusted publishing* pour `.github/workflows/release.yml` (environnement `pypi`), puis `git tag v0.1.0 ; git push origin v0.1.0` |
-| L3 — API déployée | `docker build` puis déploiement de l'image (Render, Fly.io…) ; commande par défaut = démo publique |
+| L3 — API déployée | prêt : `hf auth login` (une fois, dans votre terminal) puis `python scripts\deploy_space.py --repo-id VOTRE_COMPTE/aml-graphminer-demo` → Space Hugging Face gratuit (interface `/ui/`, API `/docs`), voir `docs/deployment.md` |
 | L5 — ReadTheDocs | importer le dépôt sur readthedocs.org (`.readthedocs.yaml` fourni) |
-| L6 — modèles HuggingFace | après entraînement sur IBM (notebook 04) : `amlgm export-hub runs\sage hub\sage --repo-id VOTRE_COMPTE/aml-graphminer-sage --push --token <jeton HF>` |
+| L6 — modèles HuggingFace | après `hf auth login` : `amlgm export-hub runs\sage-HI-Small hub\sage --repo-id VOTRE_COMPTE/aml-graphminer-sage --push` (dépôt privé par défaut) |
 | L7 — article Software Impacts | compléter les `\todo{}` de `paper\main.tex` (auteurs, DOI Zenodo, résultats réels), compiler sur Overleaf, soumettre |
 | L8 — mémoire | plan détaillé dans `paper\memoire_plan.md` ; reprenez figures et tableaux produits par les notebooks et `benchmarks\make_report.py` ; déclarez l'usage d'outils d'IA selon le règlement de votre université |
 
 `RELEASE.md` contient la liste de contrôle complète avant publication.
+
+### Donner accès aux comptes (sans jamais partager de mot de passe ni de jeton dans la conversation)
+
+Le principe est le même que pour GitHub et Kaggle : **vous** vous connectez une fois sur ce PC,
+dans **votre** terminal ; l'outil range la clé dans votre profil Windows et je peux ensuite
+l'utiliser depuis le projet sans la voir.
+
+| compte | livrable | ce que vous faites (une fois) | ensuite |
+|---|---|---|---|
+| GitHub | L1 | déjà fait (`gh auth login`) | rendre le dépôt **public** quand vous le décidez : dites-le-moi, ou *Settings → Change visibility* |
+| Hugging Face | L3 + L6 | 1. compte sur huggingface.co ; 2. *Settings → Access Tokens → Create new token*, type **Write** ; 3. dans PowerShell, dossier du projet : `.\.venv\Scripts\hf.exe auth login`, collez le jeton **dans ce terminal** (répondez `n` à la question Git) ; 4. donnez-moi seulement **votre nom d'utilisateur** | je publie la démo (`scripts\deploy_space.py`) et les modèles (`amlgm export-hub ... --push`) |
+| PyPI | L2 | 1. compte sur pypi.org (double authentification obligatoire) ; 2. *Account settings → Publishing → Add a new pending publisher* : projet `aml-graphminer`, owner `Abeidak`, repository `aml-graphminer`, workflow `release.yml`, environment `pypi` (déjà créé sur GitHub) | **aucun jeton** : je pousse l'étiquette `v0.1.0` et GitHub Actions publie le paquet (*trusted publishing*). Le nom `aml-graphminer` est libre sur PyPI |
+| ReadTheDocs | L5 | *Sign up with GitHub* sur readthedocs.org, puis *Import a Project* → `aml-graphminer` (le fichier `.readthedocs.yaml` est fourni) | rien d'autre ; l'offre gratuite exige un **dépôt public** |
+| Zenodo | L7 (DOI de l'article) | *Log in with GitHub* sur zenodo.org, *Account → GitHub* → activer `aml-graphminer` | chaque version publiée (`v0.1.0`) reçoit un DOI ; exige un **dépôt public** |
+| Kaggle | données, GPU | déjà fait | — |
+
+Avant toute publication publique (PyPI, dépôt public, Zenodo) : renseignez les vrais noms,
+e-mails et ORCID dans `pyproject.toml` et `CITATION.cff` (ou donnez-les-moi), car ils seront
+visibles et définitifs (une version PyPI ne peut pas être republiée sous le même numéro).
 
 ---
 

@@ -35,7 +35,26 @@ experiment tracking run `mlflow ui` (or a server of your choice) on the host and
 The image is a standard HTTP service on port 8000 (`GET /health` for health checks), so any
 container platform works (Render, Fly.io, Railway, a university VM ...). Use the demo command for a
 public showcase; for real data add authentication in front (reverse proxy, VPN) — the API has
-none — and never upload real customer data to a public instance.
+none — and never upload real customer data to a public instance. `amlgm serve --max-upload-mb N`
+caps the size of the files visitors can upload (512 MB by default).
+
+### Hugging Face Spaces (free)
+
+`scripts/deploy_space.py` publishes the demo as a Docker Space: a `Dockerfile` that installs the
+package with its `api` and `viz` extras and runs `amlgm serve --demo` on port 7860 as user 1000
+(Spaces requirements), uploads capped at 20 MB, and a Space card. Log in once in your own terminal
+with `hf auth login` (a token with *write* scope), then:
+
+```bash
+python scripts/deploy_space.py --repo-id YOUR_ACCOUNT/aml-graphminer-demo            # public Space
+python scripts/deploy_space.py --repo-id YOUR_ACCOUNT/aml-graphminer-demo --private  # owner only
+python scripts/deploy_space.py --repo-id YOUR_ACCOUNT/aml-graphminer-demo --dry-run --out space/
+```
+
+The Space builds in a few minutes and serves the interface at
+`https://YOUR_ACCOUNT-aml-graphminer-demo.hf.space/ui/` and the OpenAPI documentation at `/docs`.
+A free Space sleeps after a period without visits and wakes up (re-training the small demo
+detector) on the next one.
 
 ## Neo4j
 
@@ -61,6 +80,7 @@ Then open the Neo4j Browser on `http://127.0.0.1:7474` and run the queries of `q
 
 ```bash
 amlgm export-hub runs/hgb hub/aml-hgb --repo-id my-org/aml-hgb      # writes the repo + model card
+amlgm export-hub runs/hgb hub/aml-hgb --repo-id my-org/aml-hgb --push   # after `hf auth login`
 amlgm export-hub runs/hgb hub/aml-hgb --repo-id my-org/aml-hgb --push --token $HF_TOKEN
 ```
 

@@ -55,11 +55,32 @@ def _with_data_options(func: Any) -> Any:
     return func
 
 
+def _safe_streams() -> None:
+    """Never crash on a character the output encoding cannot represent (→, ≤, …).
+
+    On Windows a redirected output (``amlgm explain ... > why.txt``, a pipe) uses the legacy code
+    page (cp1252), which has no arrow: it is switched to UTF-8; a console keeps its encoding but
+    replaces what it cannot show.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            if stream.isatty():
+                reconfigure(errors="replace")
+            else:
+                reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):  # pragma: no cover - exotic streams
+            pass
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(__version__, prog_name="amlgm")
 @click.option("-v", "--verbose", count=True, help="-v: info, -vv: debug.")
 def main(verbose: int) -> None:
     """AML-GraphMiner — graph-based anti-money-laundering detection toolkit."""
+    _safe_streams()
     level = {0: logging.WARNING, 1: logging.INFO}.get(verbose, logging.DEBUG)
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 

@@ -1,4 +1,5 @@
 import json
+import sys
 
 import pytest
 from click.testing import CliRunner
@@ -329,3 +330,37 @@ def test_explain_top_alerts_writes_a_case_file(tmp_path, synth_df):
     assert len([f for f in files if f.endswith(".json")]) == res.output.count("tx ")
     assert run("explain", tmp_path / "m", data).exit_code != 0  # neither --tx nor --top
     assert run("explain", tmp_path / "m", data, "--tx", 1, "--top", 2).exit_code != 0
+
+
+def test_redirected_output_in_a_legacy_code_page_does_not_crash(tmp_path, synth_df):
+    """`amlgm explain ... > why.txt` on Windows: cp1252 has no '→' (UnicodeEncodeError)."""
+    import os
+    import subprocess
+
+    data = tmp_path / "t.csv"
+    synth_df.to_csv(data)
+    assert run("train", data, "--model", "patterns", "--out", tmp_path / "m").exit_code == 0
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+    tx = int(synth_df.index[3100])
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from aml_graphminer.cli import main; main()",
+            "explain",
+            str(tmp_path / "m"),
+            str(data),
+            "--tx",
+            str(tx),
+            "--method",
+            "occlusion",
+            "--out",
+            str(tmp_path / "why.json"),
+        ],
+        capture_output=True,
+        env=env,
+        timeout=600,
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")[-500:]
+    assert "→".encode() in proc.stdout  # written in UTF-8, not lost
+    assert (tmp_path / "why.json").exists()

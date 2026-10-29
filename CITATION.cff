@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
 title: "AML-GraphMiner: an open-source toolkit for explainable money-laundering detection on transaction graphs"
 version: 0.1.0
-date-released: 2026-10-07  # TODO: set the real release date
+date-released: 2026-10-29
 license: MIT
 repository-code: "https://github.com/Abeidak/aml-graphminer"
 abstract: >-
@@ -19,12 +19,10 @@ keywords:
   - financial crime
 authors:
   # ORCID iDs can be added later (orcid: "https://orcid.org/...")
-  - family-names: "Abeideck"
-    given-names: "Ahmed Ahmed Mahmoud"
+  - family-names: "Ahmed Ahmed Mahmoud Abeideck"
     email: "abeideck.ahmed@gmail.com"
     affiliation: "Faculté des Sciences et Techniques, Université de Nouakchott"
-  - family-names: "Boubacar"
-    given-names: "Saade Jaavar"
+  - family-names: "Saade Jaavar Boubacar"
     email: "saadejaavar21@gmail.com"
     affiliation: "Faculté des Sciences et Techniques, Université de Nouakchott"
   - family-names: "Cheikh Tourad"

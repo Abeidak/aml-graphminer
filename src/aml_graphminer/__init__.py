@@ -7,7 +7,8 @@ The package is organised in six layers (see ``docs/architecture.md``):
 3. :mod:`aml_graphminer.graph`       — NetworkX and PyTorch-Geometric representations
 4. :mod:`aml_graphminer.detectors`   — structural-motif detectors and GNN / tabular models
 5. :mod:`aml_graphminer.explainers`  — auditable explanations for every alert
-6. :mod:`aml_graphminer.api` / :mod:`aml_graphminer.cli` — interfaces on top of the same SDK
+6. :mod:`aml_graphminer.api` / :mod:`aml_graphminer.cli` / :mod:`aml_graphminer.jupyter` —
+   interfaces on top of the same SDK (REST API and web interface, command line, Jupyter plugin)
 
 Importing the package is cheap: heavy dependencies (PyTorch, PyG) are only imported
 when the GNN sub-packages are used, and the public helpers below are loaded lazily.
@@ -48,3 +49,10 @@ def __getattr__(name: str) -> Any:  # PEP 562
 
 def __dir__() -> list[str]:
     return sorted(set(globals()) | set(__all__))
+
+
+def load_ipython_extension(ipython: Any) -> None:
+    """``%load_ext aml_graphminer``: the Jupyter plugin (see :mod:`aml_graphminer.jupyter`)."""
+    from .jupyter import load_ipython_extension as load
+
+    load(ipython)

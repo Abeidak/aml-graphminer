@@ -56,6 +56,15 @@ IBM AML *LI-Small* and *HI-Small*).
 - `GNNConfig.inference` (`sampled` | `full`); `GNNDetector.describe()` and `.metrics`.
 - Docker: the image serves the web demo by default, `--build-arg WITH_GNN=1` adds PyTorch/PyG,
   `docker-compose.demo.yml` and `docker-compose.neo4j.yml`.
+- **Jupyter plugin** (`aml_graphminer.jupyter`, `jupyter` extra): scan results, alerts,
+  explanations and benchmark reports display as HTML in notebooks (tables, interactive
+  explanation graph, values from the data escaped, one-line plain-text forms);
+  `%load_ext aml_graphminer` adds `%amlgm` (the command line inside the kernel), `%aml_scan` and
+  `%aml_explain`; notebook `05_jupyter_plugin`; `scripts/py2nb.py` runs the magics when it
+  executes a notebook.
+- **Acceptance checks** of a running service: `scripts/check_service.py` (every REST route,
+  uploads, exports, error codes) and `tests/e2e/ui_check.js` (the web interface driven in a
+  headless browser).
 
 ### Fixed
 
@@ -126,6 +135,13 @@ IBM AML *LI-Small* and *HI-Small*).
 - Property-based tests (Hypothesis) of the scanner, the cycle detector, the exchange-rate solver
   and the graph converters; tests of `to_pyg_data`, `to_pyg_hetero` and the Polars reader (their
   `pragma: no cover` exclusions are removed); the CI executes notebooks `01`–`03` with nbval.
+- GNNExplainer explanations listed no account attribute, although the specification asks for
+  edges *and* features: the feature masks of the sender and the receiver are now reported.
+- Web interface: an answer arriving after the user had switched to (or closed) another dataset
+  could fill the tables with the previous dataset's rows, and a double click on *close* could
+  close two datasets.
+- CLI on Windows: an output redirected to a file or a pipe (legacy code page) failed with
+  `UnicodeEncodeError` on the arrow of the explanations and wrote nothing.
 
 ### Known limitations
 

@@ -69,6 +69,15 @@ class BenchmarkReport:
             self.per_pattern.to_csv(directory / "per_pattern_recall.csv", index=False)
         return directory
 
+    def __repr__(self) -> str:  # one line: notebooks store it next to the HTML view
+        models = self.results["model"].nunique() if "model" in self.results else 0
+        return f"BenchmarkReport({models} models, {len(self.results)} runs)"
+
+    def _repr_html_(self) -> str:  # notebooks: the summary table
+        from ..jupyter.display import benchmark_html
+
+        return benchmark_html(self)
+
 
 def _validate_inputs(df: pd.DataFrame, masks: dict[str, np.ndarray]) -> np.ndarray:
     if df["label"].isna().any():

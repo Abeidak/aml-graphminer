@@ -147,6 +147,10 @@ The modules named after the project specification (`csv_adapter`, `ibm_adapter`,
    :members:
 .. automodule:: aml_graphminer.api.schemas
    :members:
+.. automodule:: aml_graphminer.jupyter
+.. automodule:: aml_graphminer.jupyter.display
+   :members:
+.. automodule:: aml_graphminer.jupyter.magics
 .. automodule:: aml_graphminer.exceptions
    :members:
 ```

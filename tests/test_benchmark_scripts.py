@@ -1,5 +1,6 @@
 """The scripts of ``benchmarks/`` and ``scripts/`` run end to end on synthetic data."""
 
+import builtins
 import importlib
 import json
 import sys
@@ -124,6 +125,26 @@ def test_py2nb_reports_the_failing_cell(scripts, tmp_path):
     cells = scripts["py2nb"].parse_percent("# %%\nraise ValueError('boom')\n")
     with pytest.raises(RuntimeError, match="cell 0 failed"):
         scripts["py2nb"].execute_cells(cells, tmp_path)
+
+
+def test_py2nb_runs_the_magics_of_the_jupyter_plugin(scripts, tmp_path):
+    pytest.importorskip("IPython")
+    source = tmp_path / "plugin.py"
+    source.write_text(
+        "# %%\n# %load_ext aml_graphminer\nimport aml_graphminer as aml\n"
+        "df = aml.generate_transactions(n_accounts=120, n_background=600, seed=1)\n\n"
+        "# %%\n# %amlgm --version\n\n# %%\n# %aml_scan df\n",
+        encoding="utf-8",
+    )
+    try:
+        assert scripts["py2nb"].main([str(source), "--out", str(tmp_path), "--execute"]) == 0
+    finally:
+        for name in ("__IPYTHON__", "display"):  # added to builtins by IPython
+            builtins.__dict__.pop(name, None)
+    cells = json.loads((tmp_path / "plugin.ipynb").read_text(encoding="utf-8"))["cells"]
+    assert cells[0]["source"][0] == "%load_ext aml_graphminer\n"
+    assert "amlgm, version" in "".join(cells[1]["outputs"][0]["text"])
+    assert "alert(s)" in "".join(cells[2]["outputs"][-1]["data"]["text/html"])
 
 
 def test_deploy_space_stages_a_docker_space(tmp_path):

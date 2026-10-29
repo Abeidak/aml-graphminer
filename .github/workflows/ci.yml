@@ -109,7 +109,7 @@ jobs:
           path: coverage.xml
 
   notebooks:
-    name: Execute notebooks 01-03
+    name: Execute notebooks 01-03 and 05
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -122,7 +122,7 @@ jobs:
         run: >-
           pytest --nbval-lax --nbval-cell-timeout=900 -p no:cacheprovider
           notebooks/01_quickstart.ipynb notebooks/02_ibm_aml_benchmark.ipynb
-          notebooks/03_explainability.ipynb
+          notebooks/03_explainability.ipynb notebooks/05_jupyter_plugin.ipynb
       - name: Notebooks are in sync with their sources
         run: |
           python scripts/py2nb.py notebooks/src/*.py --out "$RUNNER_TEMP/rebuilt"

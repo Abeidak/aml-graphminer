@@ -212,6 +212,11 @@ class Alert:
             "evidence": _jsonable(self.evidence),
         }
 
+    def _repr_html_(self) -> str:  # notebooks: the alert and its evidence
+        from ...jupyter.display import alert_html
+
+        return alert_html(self)
+
 
 def _jsonable(value: Any) -> Any:
     if isinstance(value, dict):

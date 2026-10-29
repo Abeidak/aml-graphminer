@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections import Counter
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
@@ -177,6 +178,17 @@ class ScanResult:
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(text)
         return text
+
+    def __repr__(self) -> str:  # one line: notebooks store it next to the HTML view
+        counts = Counter(a.pattern for a in self.alerts)
+        detail = ", ".join(f"{p} {n}" for p, n in counts.most_common())
+        detail = f": {detail}" if detail else ""
+        return f"ScanResult({len(self.alerts)} alerts on {len(self.tx_ids):,} transactions{detail})"
+
+    def _repr_html_(self) -> str:  # notebooks: alerts per motif and the strongest alerts
+        from ...jupyter.display import scan_html
+
+        return scan_html(self)
 
 
 class PatternScanner:

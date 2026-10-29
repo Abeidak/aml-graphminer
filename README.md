@@ -3,7 +3,7 @@
 **Explainable money-laundering detection on transaction graphs** — structural motifs, risk
 communities, tabular baselines, supervised Graph Neural Networks (GCN, GraphSAGE, GAT) and an
 unsupervised graph auto-encoder behind one Python SDK, a web investigation interface, a command
-line and a REST API.
+line, a REST API and a Jupyter plugin.
 
 [![CI](https://github.com/Abeidak/aml-graphminer/actions/workflows/ci.yml/badge.svg)](https://github.com/Abeidak/aml-graphminer/actions/workflows/ci.yml)
 [![Documentation](https://readthedocs.org/projects/aml-graphminer/badge/?version=latest)](https://aml-graphminer.readthedocs.io/)
@@ -36,7 +36,8 @@ with the **evaluation protocol built in**:
   reporting the *measured* effect of the neighbourhood on the score (on the IBM AML models it is
   small: Captum's feature attributions are then the informative view);
 * a **web investigation interface** (dashboard, alerts with their sub-graph, explained
-  transactions, account profiles), a **REST API** (OpenAPI 3.1), the `amlgm` **command line**,
+  transactions, account profiles), a **REST API** (OpenAPI 3.1), the `amlgm` **command line**, a
+  **Jupyter plugin** (alerts and explanations displayed as tables and graphs, `%amlgm` magics),
   **MLflow** tracking, **Hugging Face Hub** export and a **Neo4j** export;
 * a `benchmark` command that compares everything over several seeds with standard deviations
   and confidence intervals, and an **EDA** report of any dataset.
@@ -103,6 +104,7 @@ truth). The toolkit never downloads data unless asked.
 | [`02_ibm_aml_benchmark`](notebooks/02_ibm_aml_benchmark.ipynb) | EDA + motifs vs. tabular vs. GNNs vs. GAE, seeds, CI, per-motif recall (set `AML_DATA` for IBM) | executed on synthetic data |
 | [`03_explainability`](notebooks/03_explainability.ipynb) | pattern evidence, occlusion, GNNExplainer, PGExplainer, Captum, attention | executed |
 | [`04_gnn_training_colab`](notebooks/04_gnn_training_colab.ipynb) | GNN rows of the IBM AML benchmark (GCN/SAGE/GAT/GAE, 3 seeds) on a free GPU in the browser (Kaggle or Colab), Elliptic, model export | not executed in the repository (needs GPU + data) |
+| [`05_jupyter_plugin`](notebooks/05_jupyter_plugin.ipynb) | the Jupyter plugin: `%amlgm`, `%aml_scan`, `%aml_explain`, alerts and explanations displayed as tables and interactive graphs | executed |
 
 The original Colab notebooks this project grew from are kept in `notebooks/colab_legacy/`.
 

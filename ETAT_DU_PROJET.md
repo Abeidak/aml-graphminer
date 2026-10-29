@@ -15,7 +15,7 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | L2 — Package PyPI | 🟡 👤 | Éditeur de confiance PyPI configuré (`Abeidak/aml-graphminer`, `release.yml`, environnement `pypi`) ; nom `aml-graphminer` libre. Reste : vrais nom et e-mail d'auteur, puis étiquette `v0.1.0`. |
 | L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | ✅ | En ligne depuis le 29/10/2026 : https://aml-graphminer-demo.onrender.com/ui/ et https://aml-graphminer-demo.onrender.com/docs (Render, offre gratuite, données synthétiques, envois limités à 20 Mo ; veille après 15 min sans visite). |
 | L4 — CLI Click `amlgm scan\|train\|explain` | ✅ | + `eda`, `score`, `benchmark`, `serve`, `explain --top` (lot d'alertes), `train --model hybrid`, exports Neo4j / Hub. |
-| L5 — Sphinx + 3 notebooks + ReadTheDocs | ✅ | Documentation en ligne : https://aml-graphminer.readthedocs.io/ (construite sans erreur), notebooks 01–04 (01–03 exécutés, vérifiés par nbval en CI). |
+| L5 — Sphinx + 3 notebooks + ReadTheDocs | ✅ | Documentation en ligne : https://aml-graphminer.readthedocs.io/ (construite sans erreur), notebooks 01–05 (01–03 et 05 exécutés, vérifiés par nbval en CI ; 05 = plugin Jupyter). |
 | L6 — Modèles pré-entraînés sur Hugging Face | ✅ (privés) | 12 modèles HI-Small en dépôts privés `abeideck/aml-graphminer-<modèle>-hi-small`, rechargés avec succès depuis le Hub. Reste (facultatif) : les rendre publics, ajouter LI-Small. |
 | L7 — Article Software Impacts | 🟡 👤 | `paper/main.tex` complet selon le plan du CDC, résultats mesurés, 23 références. Reste : auteurs, lien public + DOI Zenodo, déclarations, source pour le chiffre du marché AML, compilation sur Overleaf, soumission. |
 | L8 — Mémoire 60–80 p. + soutenance | 🟡 | Plan détaillé avec résultats (`paper/memoire_plan.md`), 16 diapositives colorées et animées, discours dans les notes (`paper/soutenance/`). Reste : rédaction du mémoire, votre nom sur la diapositive 1, répétition. |
@@ -39,7 +39,7 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | O4 GNNExplainer, PGExplainer, Captum, attention, sous-graphe, JSON | ✅ (+ effet mesuré du voisinage, explication par lot) |
 | O5 PR-AUC, F1, recall@k sur IBM HI/LI et Elliptic, RF / XGBoost | ✅ (3 graines, écarts-types) |
 | O6 API, CLI, notebooks | ✅ (+ interface web d'investigation) |
-| Fiche sujet : générateur synthétique, détecteur hybride, plugin Jupyter | ✅ générateur, ✅ hybride, ⏳ pas de plugin Jupyter dédié |
+| Fiche sujet : générateur synthétique, détecteur hybride, plugin Jupyter | ✅ générateur, ✅ hybride, ✅ plugin Jupyter (`%load_ext aml_graphminer`, notebook 05) |
 
 ## 4. Résultats mesurés (PR-AUC sur le test)
 
@@ -79,6 +79,15 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
      tests Hypothesis / PyG / Polars, nbval en CI (469 tests, couverture 98,4 %) ;
    - **5** corrections de documentation de l'audit ;
    - **6** article réécrit selon le plan du CDC ; **7** plan du mémoire et diapositives.
+6. 29/10 : **vérification fonctionnelle de tous les livrables** (API, interface web, service
+   déployé, CLI, notebooks) par rapport au CDC et à la fiche sujet :
+   - API REST : 25/25 contrôles sur Render, 33/33 en local avec un GNN (`scripts/check_service.py`) ;
+   - interface web pilotée dans un vrai navigateur : 12/12 sur Render, 16/16 en local
+     (`tests/e2e/ui_check.js`) ; CLI : 17/17 commandes ;
+   - défauts trouvés et corrigés : GNNExplainer sans attributs de compte, réponses périmées et
+     double clic dans l'interface web, CLI Windows qui échouait sur une sortie redirigée ;
+   - **plugin Jupyter** ajouté (dernier écart avec le CDC §1.4) : affichage riche des résultats,
+     `%amlgm`, `%aml_scan`, `%aml_explain`, notebook 05.
 
 ## 6. Ce qui reste
 
@@ -105,7 +114,6 @@ Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8
       propre détecteur).
 - [ ] Hybride sur LI-Small avec GraphSAGE (seul cas sans gain).
 - [ ] Hybride sur 3 graines (aujourd'hui une seule graine, modèles Kaggle seed 0).
-- [ ] Plugin Jupyter (affichage riche des alertes et explications dans un notebook).
 - [ ] Jeux *Medium* d'IBM (nécessitent le GPU Kaggle et plus de mémoire).
 
 ## 7. Limites connues

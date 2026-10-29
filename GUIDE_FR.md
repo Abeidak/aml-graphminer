@@ -118,9 +118,10 @@ Choisissez le noyau **« AML-GraphMiner (.venv) »**.
 | `02_ibm_aml_benchmark` | EDA + comparaison motifs / tabulaire / GCN / GraphSAGE / GAT / auto-encodeur, graines, intervalles de confiance, rappel par motif ; mettez `$env:AML_DATA="data\HI-Small_Trans.csv"` avant `jupyter lab` pour les vraies données |
 | `03_explainability` | preuves des motifs, occlusion, GNNExplainer, PGExplainer, Captum, attention |
 | `04_gnn_training_colab` | benchmark des GNN (GCN, GraphSAGE, GAT, GAE, 3 graines) sur GPU gratuit **dans le navigateur** — Kaggle (recommandé) ou Colab ; voir §7 |
+| `05_jupyter_plugin` | le **plugin Jupyter** : `%load_ext aml_graphminer`, commandes `%amlgm` (toute la ligne de commande dans le notebook), `%aml_scan`, `%aml_explain`, et affichage des alertes et explications en tableaux et graphes interactifs |
 
 Les sources des notebooks sont dans `notebooks\src\*.py` ; après modification, régénérez-les avec
-`python scripts\py2nb.py notebooks\src\01_quickstart.py notebooks\src\02_ibm_aml_benchmark.py notebooks\src\03_explainability.py --out notebooks --execute --workdir $env:TEMP\nbwork`.
+`python scripts\py2nb.py notebooks\src\01_quickstart.py notebooks\src\02_ibm_aml_benchmark.py notebooks\src\03_explainability.py notebooks\src\05_jupyter_plugin.py --out notebooks --execute --workdir $env:TEMP\nbwork`.
 
 ---
 
@@ -267,7 +268,8 @@ visibles et définitifs (une version PyPI ne peut pas être republiée sous le m
 | Module non supervisé par GNN | `detectors/gnn/unsupervised.py` (auto-encodeur de graphe, `--model gae`) |
 | O4 — GNNExplainer / PGExplainer, Captum, sous-graphe, export JSON | `explainers/` (6 méthodes, JSON / NetworkX / Markdown / figure) |
 | O5 — PR-AUC, F1, recall@k sur IBM HI/LI et Elliptic, baselines RF / XGBoost | `evaluation/`, `benchmarks/`, notebook 02 (résultats réels : section 7) |
-| O6 — API REST FastAPI (OpenAPI 3.1), CLI Click `amlgm scan\|train\|explain`, notebooks | `api/`, `cli.py`, `notebooks/01-04` |
+| O6 — API REST FastAPI (OpenAPI 3.1), CLI Click `amlgm scan\|train\|explain`, notebooks | `api/`, `cli.py`, `notebooks/01-05` |
+| Plugin Jupyter (CDC §1.4, « code réutilisable ») | `jupyter/` : `%load_ext aml_graphminer` (`%amlgm`, `%aml_scan`, `%aml_explain`), affichage riche des résultats ; notebook 05 |
 | Interface graphique web d'investigation | `api/static/` servie sur `/ui/` |
 | Générateur de données synthétiques réalistes | `synthetic/` (`amlgm generate`) |
 | Docker + docker-compose, GitHub Actions, tests ≥ 90 %, Sphinx + MyST + RTD, MLflow, HuggingFace Hub, MIT, CITATION.cff | `docker/`, `.github/workflows/`, `tests/` (98,3 %), `docs/`, `tracking.py`, `hub.py`, `LICENSE`, `CITATION.cff` |

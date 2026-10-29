@@ -19,9 +19,12 @@ keywords = [
     "financial crime",
     "explainable AI",
     "PyTorch Geometric",
+    "Jupyter",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Framework :: IPython",
+    "Framework :: Jupyter",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Financial and Insurance Industry",
     "Programming Language :: Python :: 3",
@@ -57,8 +60,9 @@ hub = ["huggingface_hub>=0.22"]
 neo4j = ["neo4j>=5.14"]
 data = ["kaggle>=1.6"]
 viz = ["matplotlib>=3.8"]
+jupyter = ["ipython>=8"]  # the magics of the Jupyter plugin (rich display needs nothing)
 all = [
-    "aml-graphminer[gnn,explain,api,parquet,scale,xgboost,tracking,hub,neo4j,data,viz]",
+    "aml-graphminer[gnn,explain,api,parquet,scale,xgboost,tracking,hub,neo4j,data,viz,jupyter]",
 ]
 dev = [
     "pytest>=8",
@@ -78,6 +82,7 @@ docs = [
     "myst-parser>=2.0",
     "sphinx-rtd-theme>=2.0",
     "sphinx-autodoc-typehints>=2.0",
+    "ipython>=8",  # API reference of aml_graphminer.jupyter.magics
 ]
 
 [project.scripts]

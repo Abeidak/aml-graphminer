@@ -7,9 +7,11 @@ that are shipped with the repository.
 
 * Without ``--execute`` the notebook has no outputs (what Colab users get on first open).
 * With ``--execute`` every code cell is run in one shared namespace and its outputs (stdout,
-  stderr, the value of a trailing expression, DataFrames as HTML, matplotlib figures as PNG)
-  are stored in the notebook. This lightweight executor needs nothing but the standard
-  library and matplotlib; the CI re-executes the shipped notebooks with nbval
+  stderr, the value of a trailing expression, objects with a ``_repr_html_`` — DataFrames,
+  alerts, explanations — as HTML, matplotlib figures as PNG) are stored in the notebook. This
+  lightweight executor needs nothing but the standard library and matplotlib; when IPython is
+  installed the magics of the cells (``%load_ext``, ``%amlgm`` ...) run through it, otherwise
+  they are skipped. The CI re-executes the shipped notebooks with nbval
   (``pytest --nbval-lax``, see ``.github/workflows/ci.yml``), which is the authoritative check.
 
 Conventions of the source files
@@ -17,6 +19,7 @@ Conventions of the source files
 ``# %%``            starts a code cell
 ``# %% [markdown]``  starts a markdown cell; its lines are ``# `` prefixed
 ``# %pip ...``       in a code cell becomes the magic ``%pip ...`` (skipped when executing here)
+``# %load_ext ...``, ``# %aml...`` become the magics of the Jupyter plugin (run when executing)
 
 Usage::
 
@@ -38,8 +41,11 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-
 # --------------------------------------------------------------------------- parsing
+# commented lines of a code cell that become magics in the notebook
+MAGIC_COMMENTS = ("# %pip", "# %matplotlib", "# %load_ext", "# %aml", "# !")
+
+
 def parse_percent(text: str) -> list[dict[str, Any]]:
     """Split a percent-format script into ``{"type", "source"}`` cells."""
     cells: list[dict[str, Any]] = []
@@ -67,9 +73,7 @@ def parse_percent(text: str) -> list[dict[str, Any]]:
         if cell["type"] == "markdown":
             lines = [ln[2:] if ln.startswith("# ") else ln.lstrip("#") for ln in lines]
         else:
-            lines = [
-                ln[2:] if ln.startswith(("# %pip", "# %matplotlib", "# !")) else ln for ln in lines
-            ]
+            lines = [ln[2:] if ln.startswith(MAGIC_COMMENTS) else ln for ln in lines]
         if lines:
             out.append({"type": cell["type"], "source": "\n".join(lines)})
     return out
@@ -116,6 +120,25 @@ def _strip_magics(source: str) -> str:
     return "\n".join("" if ln.lstrip().startswith(("%", "!")) else ln for ln in source.split("\n"))
 
 
+def _ipython_shell(namespace: dict[str, Any]) -> Any:
+    """IPython shell working in ``namespace``, to run the magics of the cells (None without it)."""
+    try:
+        from IPython.core.interactiveshell import InteractiveShell
+        from traitlets.config import Config
+    except ImportError:
+        return None
+    config = Config()
+    config.HistoryManager.enabled = False
+    return InteractiveShell(config=config, user_ns=namespace)
+
+
+def _cell_code(source: str, shell: Any) -> str:
+    """Python code of a cell: installs are skipped, the other magics go through IPython."""
+    lines = source.split("\n")
+    source = "\n".join("" if ln.lstrip().startswith(("%pip", "!")) else ln for ln in lines)
+    return _strip_magics(source) if shell is None else shell.transform_cell(source)
+
+
 def _figures_as_png() -> list[dict[str, Any]]:
     import matplotlib.pyplot as plt
 
@@ -152,6 +175,7 @@ def execute_cells(cells: list[dict[str, Any]], workdir: Path) -> list[list[dict[
 
     matplotlib.use("Agg")
     namespace: dict[str, Any] = {"__name__": "__main__"}
+    shell = _ipython_shell(namespace)
     outputs: list[list[dict[str, Any]]] = []
     count = 0
     previous = Path.cwd()
@@ -162,7 +186,7 @@ def execute_cells(cells: list[dict[str, Any]], workdir: Path) -> list[list[dict[
                 outputs.append([])
                 continue
             count += 1
-            source = _strip_magics(cell["source"])
+            source = _cell_code(cell["source"], shell)
             stdout, stderr = io.StringIO(), io.StringIO()
             cell_outputs: list[dict[str, Any]] = []
             tree = ast.parse(source)

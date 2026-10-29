@@ -148,6 +148,18 @@ class Explanation:
             ]
         return "\n".join(lines)
 
+    def __repr__(self) -> str:  # one line: notebooks store it next to the HTML view
+        score = "" if self.score is None else f", score {self.score:.3f}"
+        return (
+            f"Explanation(tx {self.tx_id}, {self.method}{score}, {len(self.edges)} transactions, "
+            f"{len(self.features)} attributes, {len(self.patterns)} motifs)"
+        )
+
+    def _repr_html_(self) -> str:  # notebooks: verdict, graph and what matters most
+        from ..jupyter.display import explanation_html
+
+        return explanation_html(self)
+
 
 def _round_fields(data: dict[str, Any]) -> dict[str, Any]:
     return {k: (round(v, 6) if isinstance(v, float) else v) for k, v in data.items()}

@@ -217,6 +217,19 @@ def test_gnn_explanation_summaries_are_french():
     assert not english(" ".join([explainer, captum, uniform, attention]))
 
 
+def test_a_tiny_effect_is_not_written_as_zero():
+    edges = [
+        EdgeImportance(1, "A", "B", 900.0, "2022-09-01 10:00:00", 0.0, "target"),
+        EdgeImportance(2, "C", "A", 450.0, "2022-09-01 09:00:00", 0.0002, "neighbour"),
+    ]
+    occlusion = Explanation(1, "occlusion", 1.0, 0.5, edges, details={"neighbours": 1}).to_dict()
+    captum = _gnn("captum")
+    captum["features"][0]["importance"] = -0.0001
+    occluded, attributed = fr(["explanationSummary", occlusion], ["explanationSummary", captum])
+    assert occluded.endswith(" : elle augmente le score de moins de 0,001.")  # not "de 0,000"
+    assert "il diminue la probabilité de moins de 0,001." in attributed
+
+
 def test_attributes_of_the_models_have_french_names():
     names = [
         *ATTRIBUTE_COLUMNS,

@@ -402,7 +402,11 @@
     return best;
   }
 
-  const direction = (value, subject) => `${subject} ${value > 0 ? "augmente" : "diminue"}`;
+  // "elle augmente le score de 0,213"; an effect that rounds to 0,000 reads "de moins de 0,001"
+  const change = (value, subject, what) => {
+    const size = Math.abs(value) < 0.0005 ? "moins de 0,001" : fmt.num(Math.abs(value), 3);
+    return `${subject} ${value > 0 ? "augmente" : "diminue"} ${what} de ${size}`;
+  };
 
   /** The summary sentence of an explanation (Explanation.summary on the server), in French. */
   function explanationSummary(explanation) {
@@ -426,7 +430,7 @@
       return (
         `${base} La transaction voisine la plus influente est la n° ${top.tx_id} ` +
         `(${top.sender} → ${top.receiver}, ${fmt.money(top.amount)}) : ` +
-        `${direction(top.importance, "elle")} le score de ${fmt.num(Math.abs(top.importance), 3)}.`
+        `${change(top.importance, "elle", "le score")}.`
       );
     }
     // GNN methods (gnnexplainer, pgexplainer, captum, attention)
@@ -452,7 +456,7 @@
       const f = features[0];
       text +=
         ` Attribut le plus influent : ${featureLabel(f.name)} (valeur standardisée ${fmt.num(Number(f.value), 2)}) ; ` +
-        `${direction(f.importance, "il")} la probabilité de ${fmt.num(Math.abs(f.importance), 3)}.`;
+        `${change(f.importance, "il", "la probabilité")}.`;
     }
     if (details.trained_on !== undefined) {
       text += ` Explicateur entraîné sur ${plural(details.trained_on, "voisinage d'alerte", "voisinages d'alertes")}.`;

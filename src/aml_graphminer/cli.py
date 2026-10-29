@@ -621,9 +621,7 @@ def serve(
     uvicorn = require("uvicorn", "api", "the REST API")
     if model_dir is None:
         model_dir = str(_demo_model())
-    app = create_app(
-        model_dir, datasets=list(data_files), demo=demo, max_upload_mb=max_upload_mb
-    )
+    app = create_app(model_dir, datasets=list(data_files), demo=demo, max_upload_mb=max_upload_mb)
     shown = "127.0.0.1" if host in ("0.0.0.0", "::") else host
     url = f"http://{shown}:{port}/ui/"
     click.echo(f"web interface: {url}")

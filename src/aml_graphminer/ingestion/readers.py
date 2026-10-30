@@ -57,8 +57,11 @@ def read_raw(
     (identifiers such as ``"011"`` or ``"8000ECA90"``); positions are used instead of names
     because the IBM files contain two columns called ``Account``.
 
-    ``engine="polars"`` uses the Polars CSV reader (much faster and lighter on memory for
-    the 30-180 M-row IBM files) and converts the result to pandas; it needs the ``scale`` extra.
+    ``engine="polars"`` parses the CSV with Polars and converts the result to pandas; it needs
+    the ``scale`` extra. Measured on HI-Small (``benchmarks/io_engines.py``): the whole
+    :func:`load_dataset` takes 12.8 s instead of 17.3 s, but peaks at 4.2 GB instead of 2.6 GB,
+    because the canonical conversion then works on Arrow-backed strings — choose it for speed
+    when memory is plentiful.
     """
     path = Path(path)
     if not path.exists():

@@ -24,6 +24,10 @@ def _echo_json(payload: Any) -> None:
     click.echo(json.dumps(payload, indent=2, default=str, ensure_ascii=False))
 
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def _load(data: str, schema: str, nrows: int | None, patterns_file: str | None) -> pd.DataFrame:
     from .ingestion import load_dataset
 
@@ -297,14 +301,20 @@ def train(
             overrides["trainer"] = trainer
         if kind != "gae":
             _require_labels(df, "training")
-        with cfg.tracker(f"train-{kind}") as tracker:
+        gnn_config = GNNConfig.from_dict(overrides)
+        # the training loop in the run name: runs of both loops are told apart in MLflow
+        with cfg.tracker(f"train-{kind}-{gnn_config.trainer}") as tracker:
+            tracker.log_params({"model": kind, "seed": seed, **gnn_config.to_dict()})
             fit = AutoEncoderDetector.fit if kind == "gae" else GNNDetector.fit
             detector = fit(
                 df,
-                GNNConfig.from_dict(overrides),
+                gnn_config,
                 feature_config=cfg.feature_config(),
                 seed=seed,
                 tracker=tracker,
+            )
+            tracker.log_metrics(
+                {f"test_{k}": float(v) for k, v in detector.metrics.items() if _is_number(v)}
             )
     else:
         _require_labels(df, "training")
@@ -619,6 +629,14 @@ def _demo_model() -> Path:
     show_default=True,
     help="Largest file the web interface accepts (keep it small on a public demo).",
 )
+@click.option(
+    "--api-key",
+    envvar="AMLGM_API_KEY",
+    default=None,
+    show_envvar=True,
+    help="Require this key (header X-API-Key) on the scoring and investigation routes; prefer "
+    "the environment variable, a command-line argument is visible to other users.",
+)
 def serve(
     model_dir: str | None,
     host: str,
@@ -627,6 +645,7 @@ def serve(
     demo: bool,
     open_browser: bool,
     max_upload_mb: int,
+    api_key: str | None,
 ) -> None:
     """Serve a detector: REST API + web investigation interface at http://HOST:PORT/ui/.
 
@@ -642,10 +661,18 @@ def serve(
     uvicorn = require("uvicorn", "api", "the REST API")
     if model_dir is None:
         model_dir = str(_demo_model())
-    app = create_app(model_dir, datasets=list(data_files), demo=demo, max_upload_mb=max_upload_mb)
+    app = create_app(
+        model_dir,
+        datasets=list(data_files),
+        demo=demo,
+        max_upload_mb=max_upload_mb,
+        api_key=api_key or None,
+    )
     shown = "127.0.0.1" if host in ("0.0.0.0", "::") else host
     url = f"http://{shown}:{port}/ui/"
     click.echo(f"web interface: {url}")
+    if api_key:
+        click.echo("API key required on the scoring and investigation routes (header X-API-Key)")
     click.echo(f"API documentation: http://{shown}:{port}/docs")
     if open_browser:  # pragma: no cover - opens a browser
         import threading

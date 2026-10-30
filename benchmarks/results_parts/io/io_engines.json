@@ -1,0 +1,97 @@
+{
+ "machine": {
+  "python": "3.12.10",
+  "os": "Windows-11-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel"
+ },
+ "results": [
+  {
+   "engine": "pandas",
+   "file": "HI-Small_Trans.csv",
+   "rows": 5078345,
+   "seconds": 17.93,
+   "peak_mb": 2592,
+   "baseline_mb": 90,
+   "amount_sum": 22899645860702.71,
+   "illicit": 5177,
+   "run": 1
+  },
+  {
+   "engine": "pandas",
+   "file": "HI-Small_Trans.csv",
+   "rows": 5078345,
+   "seconds": 17.28,
+   "peak_mb": 2591,
+   "baseline_mb": 90,
+   "amount_sum": 22899645860702.71,
+   "illicit": 5177,
+   "run": 2
+  },
+  {
+   "engine": "polars",
+   "file": "HI-Small_Trans.csv",
+   "rows": 5078345,
+   "seconds": 14.39,
+   "peak_mb": 3186,
+   "baseline_mb": 90,
+   "amount_sum": 22899645860702.71,
+   "illicit": 5177,
+   "run": 1
+  },
+  {
+   "engine": "polars",
+   "file": "HI-Small_Trans.csv",
+   "rows": 5078345,
+   "seconds": 12.79,
+   "peak_mb": 4227,
+   "baseline_mb": 90,
+   "amount_sum": 22899645860702.71,
+   "illicit": 5177,
+   "run": 2
+  },
+  {
+   "engine": "pandas",
+   "file": "LI-Small_Trans.csv",
+   "rows": 6924049,
+   "seconds": 23.61,
+   "peak_mb": 3474,
+   "baseline_mb": 90,
+   "amount_sum": 32377102200535.18,
+   "illicit": 3565,
+   "run": 1
+  },
+  {
+   "engine": "pandas",
+   "file": "LI-Small_Trans.csv",
+   "rows": 6924049,
+   "seconds": 22.97,
+   "peak_mb": 3474,
+   "baseline_mb": 90,
+   "amount_sum": 32377102200535.18,
+   "illicit": 3565,
+   "run": 2
+  },
+  {
+   "engine": "polars",
+   "file": "LI-Small_Trans.csv",
+   "rows": 6924049,
+   "seconds": 19.61,
+   "peak_mb": 4432,
+   "baseline_mb": 90,
+   "amount_sum": 32377102200535.18,
+   "illicit": 3565,
+   "run": 1
+  },
+  {
+   "engine": "polars",
+   "file": "LI-Small_Trans.csv",
+   "rows": 6924049,
+   "seconds": 18.02,
+   "peak_mb": 4849,
+   "baseline_mb": 90,
+   "amount_sum": 32377102200535.18,
+   "illicit": 3565,
+   "run": 2
+  }
+ ]
+}

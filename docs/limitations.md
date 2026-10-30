@@ -42,8 +42,8 @@ is illicit: unusual but legitimate behaviour (a one-off large purchase) scores h
 auto-encoder learns to reconstruct anomalies if it is trained for many epochs.
 
 **Interfaces.** The web interface keeps the analysed tables in server memory (5 investigations,
-2 million transactions each) and has no user accounts; it is meant for a single analyst on a
-workstation or behind an authenticating proxy. GNN scores use a fixed sampling seed (or full
+2 million transactions each) and has no user accounts (only an optional shared API key); it is
+meant for a single analyst on a workstation or behind an authenticating proxy. GNN scores use a fixed sampling seed (or full
 neighbourhoods with `inference: full`), so they are reproducible, but the score of a transaction
 still depends on the transactions sent with it as context.
 

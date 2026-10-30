@@ -139,9 +139,9 @@ Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8
 | Entraînement GNN : GPU ou Kaggle | Kaggle, GPU Tesla T4 (noyaux privés) ; Colab et cluster FST non utilisés |
 | Benchmark Medium / Large | non fait (seuls HI/LI-Small et Elliptic) |
 | Python 3.11+, PyTorch 2.x, PyG 2.5+, NetworkX 3.x, Pandas, scikit-learn, XGBoost, Captum, Pydantic, FastAPI, Click 8, pytest, Hypothesis, coverage, ruff, Sphinx + MyST, Docker | utilisés (Python 3.11–3.13 en CI) ; en plus : mypy, nbval, Neo4j |
-| PyTorch Lightning | implémenté et testé (`trainer: lightning`) ; le benchmark publié utilise la boucle PyTorch |
-| Polars | implémenté et testé (`engine="polars"`) ; inutile sur les jeux *Small* (Pandas suffit) |
-| MLflow | implémenté et testé (`amlgm train --mlflow`) ; pas utilisé pour le benchmark publié |
+| PyTorch Lightning | implémenté et testé (`--trainer lightning`), suivi par époque comme la boucle PyTorch ; comparaison sur données synthétiques : PR-AUC de test 0,851 (Lightning) contre 0,841 (PyTorch), courbes presque superposées dans MLflow ; le benchmark publié utilise la boucle PyTorch |
+| Polars | mesuré (`benchmarks/io_engines.py`) : `load_dataset` de HI-Small en 12,8 s contre 17,3 s avec pandas, mais 4,2 Go de mémoire au pic contre 2,6 Go ; pandas reste le moteur par défaut |
+| MLflow | utilisé : `amlgm train --mlflow` enregistre paramètres, courbes par époque et métriques de test (capture dans le mémoire) ; pas utilisé pour le benchmark publié |
 | Poetry ou hatch | remplacé par setuptools + `build` + `twine` (standard, suffisant) |
 | docker-compose | fichiers fournis ; non exécuté en local |
 | Fly.io / Render / cluster FST | Render |

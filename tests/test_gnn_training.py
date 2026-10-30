@@ -261,7 +261,17 @@ def test_detector_fit_predict_save_load(synth_df, tmp_path):
 
 def test_lightning_trainer(synth_df, synth_masks, prepared):
     pytest.importorskip("lightning")
+    from aml_graphminer.tracking import Tracker
+
+    class Recorder(Tracker):
+        def __init__(self) -> None:
+            self.steps: list[tuple[int | None, dict]] = []
+
+        def log_metrics(self, metrics, step=None):
+            self.steps.append((step, dict(metrics)))
+
     pipeline, features = prepared
+    recorder = Recorder()
     out = run_gnn_experiment(
         "sage",
         synth_df,
@@ -269,8 +279,15 @@ def test_lightning_trainer(synth_df, synth_masks, prepared):
         synth_masks,
         tiny_config(trainer="lightning", epochs=2),
         pipeline_stats=pipeline.to_dict(),
+        tracker=recorder,
     )
     assert out["scores_test"].shape[0] == synth_masks["test"].sum()
+    # one entry per epoch, like the PyTorch loop: history, tracker steps, best epoch among them
+    history = out["trained"].history
+    assert [e["epoch"] for e in history] == [1.0, 2.0]
+    assert all(e["train_loss"] > 0 and 0 <= e["val_pr_auc"] <= 1 for e in history)
+    per_epoch = [step for step, m in recorder.steps if "sage/train_loss" in m]
+    assert per_epoch == [1, 2] and out["best_epoch"] in (1, 2)
 
 
 def test_benchmark_runs_gnns(synth_df):

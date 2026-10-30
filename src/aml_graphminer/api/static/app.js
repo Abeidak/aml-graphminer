@@ -86,12 +86,36 @@
   }
 
   // ------------------------------------------------------------------ API & feedback
-  async function api(path, options = {}) {
+  // A server started with an API key (amlgm serve, $AMLGM_API_KEY) answers 401 without it: the
+  // key is asked once and kept for the browser tab (sessionStorage), never in the page or a URL.
+  const KEY_STORE = "amlgm-api-key";
+  const storedKey = () => {
+    try {
+      return sessionStorage.getItem(KEY_STORE) || "";
+    } catch {
+      return ""; // storage disabled: the key is asked again after a reload
+    }
+  };
+
+  async function api(path, options = {}, askKey = true) {
+    const key = storedKey();
+    const headers = { ...(options.headers || {}), ...(key ? { "X-API-Key": key } : {}) };
     let response;
     try {
-      response = await fetch(`${API}${path}`, options);
+      response = await fetch(`${API}${path}`, { ...options, headers });
     } catch {
       throw new Error(FR.NETWORK_ERROR); // no answer at all (offline, server asleep or stopped)
+    }
+    if (response.status === 401 && askKey) {
+      const typed = (window.prompt(FR.API_KEY_PROMPT) || "").trim();
+      if (typed) {
+        try {
+          sessionStorage.setItem(KEY_STORE, typed);
+        } catch {
+          // storage disabled: this request still uses the key below
+        }
+        return api(path, { ...options, headers: { ...(options.headers || {}), "X-API-Key": typed } }, false);
+      }
     }
     const type = response.headers.get("content-type") || "";
     const body = type.includes("application/json") ? await response.json() : await response.text();
@@ -254,8 +278,20 @@
     }
   }
 
-  function exportCsv(kind) {
-    if (state.datasetId) window.location.href = `${API}/datasets/${state.datasetId}/export/${kind}.csv`;
+  // through api() (a plain link could not carry the API key), then saved as a file
+  async function exportCsv(kind) {
+    if (!state.datasetId) return;
+    try {
+      const text = await api(`/datasets/${state.datasetId}/export/${kind}.csv`);
+      const url = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
+      const link = h("a", { href: url, download: `${kind}-${state.datasetId}.csv` });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      fail(error);
+    }
   }
 
   // ------------------------------------------------------------------ charts (inline SVG)

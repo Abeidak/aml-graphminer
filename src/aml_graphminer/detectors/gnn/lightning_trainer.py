@@ -42,8 +42,14 @@ def make_lightning_module(
     edge_feat: dict[str, Tensor],
     labels: Tensor,
     y_numpy: np.ndarray,
+    tracker: Tracker | None = None,
+    history: list[dict[str, float]] | None = None,
 ) -> Any:
-    """Build a ``LightningModule`` around ``model`` (defined here to import ``pl`` lazily)."""
+    """Build a ``LightningModule`` around ``model`` (defined here to import ``pl`` lazily).
+
+    Every validation epoch appends ``{epoch, train_loss, val_pr_auc}`` to ``history`` and sends
+    the same figures to ``tracker`` at that step, like the PyTorch loop does.
+    """
 
     class EdgeGNNLightning(pl.LightningModule):  # type: ignore[misc,name-defined]
         def __init__(self) -> None:
@@ -52,6 +58,7 @@ def make_lightning_module(
             self.criterion = build_criterion(config)
             self._val_ids: list[Tensor] = []
             self._val_probs: list[Tensor] = []
+            self._loss_sum, self._loss_batches = 0.0, 0
 
         def forward(self, batch: Any, split: str = "train") -> Tensor:
             ids = batch.edge_label
@@ -63,6 +70,8 @@ def make_lightning_module(
             targets = labels.to(self.device)[batch.edge_label]
             loss = self.criterion(logits, targets)
             self.log("train_loss", loss, prog_bar=True, batch_size=len(targets))
+            self._loss_sum += float(loss.detach())
+            self._loss_batches += 1
             return loss
 
         def validation_step(self, batch: Any, batch_idx: int) -> None:
@@ -79,6 +88,24 @@ def make_lightning_module(
             truth = y_numpy[ids]
             ap = float(average_precision_score(truth, probs)) if truth.sum() > 0 else 0.0
             self.log("val_pr_auc", ap, prog_bar=True)
+            if self.trainer.sanity_checking:  # a few batches before training: not an epoch
+                return
+            entry = {
+                "epoch": float(self.current_epoch + 1),
+                "train_loss": self._loss_sum / max(self._loss_batches, 1),
+                "val_pr_auc": ap,
+            }
+            self._loss_sum, self._loss_batches = 0.0, 0
+            if history is not None:
+                history.append(entry)
+            if tracker is not None:
+                tracker.log_metrics(
+                    {
+                        f"{config.kind}/train_loss": entry["train_loss"],
+                        f"{config.kind}/val_pr_auc": ap,
+                    },
+                    step=int(entry["epoch"]),
+                )
 
         def configure_optimizers(self) -> Any:
             return torch.optim.Adam(
@@ -113,7 +140,10 @@ def fit_edge_gnn_lightning(
         for name in ("train", "val")
     }
     labels = torch.from_numpy(np.nan_to_num(y.astype("float32")))
-    module = make_lightning_module(pl, model, config, edge_feat, labels, np.nan_to_num(y))
+    history: list[dict[str, float]] = []
+    module = make_lightning_module(
+        pl, model, config, edge_feat, labels, np.nan_to_num(y), tracker, history
+    )
 
     with tempfile.TemporaryDirectory() as tmp:
         checkpoint = pl.callbacks.ModelCheckpoint(
@@ -147,10 +177,13 @@ def fit_edge_gnn_lightning(
             module.model.load_state_dict(
                 {k[len(prefix) :]: v for k, v in state.items() if k.startswith(prefix)}
             )
-        best_score = checkpoint.best_model_score
-        history = [{"epoch": float(trainer.current_epoch), "val_pr_auc": float(best_score or 0.0)}]
-    logger.info("[%s] lightning best val PR-AUC %.4f", config.kind, history[-1]["val_pr_auc"])
-    tracker.log_metrics({f"{config.kind}/val_pr_auc": history[-1]["val_pr_auc"]})
+        best_score = float(checkpoint.best_model_score or 0.0)
+    # the checkpoint keeps the first epoch with the best validation PR-AUC
+    best_epoch = int(max(history, key=lambda e: e["val_pr_auc"])["epoch"]) if history else 0
+    logger.info(
+        "[%s] lightning best val PR-AUC %.4f (epoch %d)", config.kind, best_score, best_epoch
+    )
+    tracker.log_metrics({f"{config.kind}/best_val_pr_auc": best_score})
     module.model.eval()
     return TrainedGNN(
         model=module.model.cpu(),
@@ -159,7 +192,7 @@ def fit_edge_gnn_lightning(
         in_node=in_node,
         in_edge=in_edge,
         history=history,
-        best_epoch=int(trainer.current_epoch),
+        best_epoch=best_epoch,
     )
 
 

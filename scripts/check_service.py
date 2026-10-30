@@ -15,6 +15,7 @@ import argparse
 import io
 import itertools
 import json
+import os
 import re
 import sys
 import tempfile
@@ -80,11 +81,15 @@ class Result:
 class Checker:
     base: str
     timeout: float = 240.0
+    api_key: str | None = None
     results: list[Result] = field(default_factory=list)
     created: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        self.client = httpx.Client(base_url=self.base.rstrip("/"), timeout=self.timeout)
+        headers = {"X-API-Key": self.api_key} if self.api_key else None
+        self.client = httpx.Client(
+            base_url=self.base.rstrip("/"), timeout=self.timeout, headers=headers
+        )
 
     def run(self, group: str, name: str, fn: Callable[[], str | None]) -> Any:
         t0 = time.perf_counter()
@@ -144,8 +149,13 @@ def main(argv: list[str] | None = None) -> int:
         help="the server's --max-upload-mb: send a larger file and expect a refusal",
     )
     parser.add_argument("--report", default=None, help="write the results as JSON")
+    parser.add_argument(
+        "--api-key",
+        default=os.environ.get("AMLGM_API_KEY"),
+        help="key of a server started with one (default: $AMLGM_API_KEY)",
+    )
     args = parser.parse_args(argv)
-    c = Checker(args.base_url)
+    c = Checker(args.base_url, api_key=args.api_key)
     df = aml.generate_transactions(n_accounts=250, n_background=1800, illicit_ratio=0.04, seed=11)
     sample = records(df)
     state: dict[str, Any] = {}

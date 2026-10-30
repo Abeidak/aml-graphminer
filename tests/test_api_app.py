@@ -134,3 +134,24 @@ def test_app_options_preload_datasets(synth_df, tmp_path):
     app = create_app(service, datasets=[path], demo=True)
     names = [d["name"] for d in TestClient(app).get("/api/datasets").json()]
     assert "pre_Trans.csv" in names and any(n.startswith("synthetic demo") for n in names)
+
+
+def test_an_api_key_protects_the_scoring_and_investigation_routes(synth_df):
+    detector = TabularDetector.fit(synth_df, "logreg")
+    with TestClient(create_app(ScoringService(detector), api_key="s3cret")) as c:
+        # open: health check, documentation and the files of the web interface
+        for path in ("/health", "/openapi.json", "/docs", "/ui/", "/ui/app.js"):
+            assert c.get(path).status_code == 200, path
+        body = {"transactions": to_records(synth_df.iloc[3000:3010])}
+        calls = [
+            ("post", "/score", {"json": body}),
+            ("get", "/api/model", {}),
+            ("get", "/api/datasets", {}),
+        ]
+        for method, path, kwargs in calls:
+            send = getattr(c, method)
+            assert send(path, **kwargs).status_code == 401, path
+            assert send(path, headers={"X-API-Key": "wrong"}, **kwargs).status_code == 401, path
+            assert send(path, headers={"X-API-Key": "s3cret"}, **kwargs).status_code == 200, path
+        refused = c.get("/api/model").json()
+        assert refused["error"] == "unauthorized" and "X-API-Key" in refused["detail"]

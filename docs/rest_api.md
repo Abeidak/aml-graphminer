@@ -86,7 +86,18 @@ curl -s -F file=@data/Synth-Small_Trans.csv -F schema=ibm localhost:8000/api/dat
 
 ## Security notes
 
-The API has **no authentication, rate limiting or TLS**. Put it behind your own gateway, never
-expose it directly to the internet, and treat the posted transactions as personal data (do not
-log request bodies). The model directory is loaded with `joblib`/`torch.load` — only serve
+**API key.** Started with a key, the server requires it in the `X-API-Key` header on every route
+that reads or analyses transactions (`/score`, `/explain`, `/scan`, `/api/...`) and answers 401
+without it; `/health`, the documentation and the files of the web interface stay open, and the web
+interface asks for the key once per browser tab. Pass the key through the environment, not the
+command line (visible to other users of the machine):
+
+```bash
+AMLGM_API_KEY="a-long-random-string" amlgm serve runs/hgb --host 0.0.0.0
+curl -s -H "X-API-Key: a-long-random-string" localhost:8000/api/model
+```
+
+One shared key is a lock, not user management: there is still **no user account, rate limiting
+or TLS**. Put the service behind your own gateway (HTTPS) for real data, and treat the posted
+transactions as personal data (do not log request bodies). The model directory is loaded with `joblib`/`torch.load` — only serve
 models you trained or whose provenance you trust.

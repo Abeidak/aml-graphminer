@@ -28,6 +28,17 @@ df = aml.read_transactions("data/HI-Small_Trans.csv", nrows=500_000, engine="pol
 `load_dataset` is what the CLI uses: it reads the table **and** fills the `pattern` column from
 the sibling `*_Patterns.txt`. `read_transactions` reads the table only (`pattern` stays empty).
 
+Pandas or Polars? Measured with `benchmarks/io_engines.py` (full `load_dataset`, fresh process,
+best of 2 runs; [results](https://github.com/Abeidak/aml-graphminer/tree/main/benchmarks/results_parts/io)):
+
+| file | rows | pandas | polars |
+|---|---:|---|---|
+| HI-Small | 5,078,345 | 17.3 s, peak 2.6 GB | 12.8 s, peak 4.2 GB |
+| LI-Small | 6,924,049 | 23.0 s, peak 3.5 GB | 18.0 s, peak 4.8 GB |
+
+Polars parses faster but the conversion to the canonical schema then works on Arrow-backed
+strings and needs more memory: keep the default (`pandas`) when memory is tight.
+
 Notes on the format, all handled by the `IBMAdapter`:
 
 * two columns are named `Account`; the mapping is done **by position**, like the original

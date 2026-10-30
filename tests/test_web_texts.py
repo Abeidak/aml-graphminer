@@ -288,12 +288,14 @@ def test_error_messages_of_the_api_are_french(service, dataset, synth_df, tmp_pa
         prose = re.sub(r"\[[^\]]*\]|timestamp, sender, receiver, amount|label", "", text)
         assert text != message and not english(prose), (message, text)
     validation = {"detail": [{"loc": ["query", "min_score"], "msg": "Input should be <= 1"}]}
-    other, invalid, down = fr(
+    other, invalid, down, key = fr(
         ["errorMessage", 422, {"error": "invalid_request", "detail": "something new"}],
         ["errorMessage", 422, validation],
         ["errorMessage", 502, "<html>Bad Gateway</html>"],
+        ["errorMessage", 401, {"error": "unauthorized", "detail": "missing or invalid API key"}],
     )
     assert other == "something new" and invalid == "Paramètre invalide : min_score."
+    assert key.startswith("Clé d'accès manquante ou invalide")
     assert down.startswith("Le serveur n'a pas pu répondre (HTTP 502)")
 
 

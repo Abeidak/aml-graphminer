@@ -4,6 +4,30 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Optional API key**: `amlgm serve` with `$AMLGM_API_KEY` (or `--api-key`) answers 401 on the
+  scoring and investigation routes unless the `X-API-Key` header carries the key (constant-time
+  comparison); health check, documentation and web assets stay open. The web interface asks for
+  the key once per browser tab and downloads its CSV exports through the same authenticated calls;
+  `scripts/check_service.py --api-key` checks a protected service.
+- `benchmarks/io_engines.py`: time and peak memory of `load_dataset` with pandas or Polars, each in
+  a fresh process (`benchmarks/results_parts/io/`).
+
+### Changed
+
+- PyTorch Lightning training records every epoch (train loss, validation PR-AUC) in the history
+  and the tracker, like the PyTorch loop, and reports the epoch of the best checkpoint.
+- `amlgm train --mlflow` logs the GNN configuration as run parameters and the test metrics; runs
+  are named after the model and the training loop (`train-sage-lightning`).
+
+### Fixed
+
+- The Polars reading engine was documented as lighter on memory; measured on HI-Small it is
+  faster (12.8 s instead of 17.3 s for `load_dataset`) but peaks higher (4.2 GB instead of 2.6 GB).
+
 ## [0.1.1] - 2026-10-30
 
 ### Added

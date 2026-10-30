@@ -504,6 +504,7 @@
   ];
   const NETWORK_ERROR =
     "Serveur injoignable : vérifiez la connexion (un service gratuit en veille met environ une minute à redémarrer).";
+  const API_KEY_PROMPT = "Ce service demande une clé d'accès (en-tête X-API-Key). Saisissez-la :";
 
   /** French message for an HTTP error of the API (``body``: parsed JSON or text). */
   function errorMessage(status, body) {
@@ -518,6 +519,7 @@
       const m = pattern.exec(text);
       if (m) return render(m);
     }
+    if (status === 401) return "Clé d'accès manquante ou invalide : rechargez la page pour la saisir à nouveau.";
     if (status === 413) return "Fichier trop volumineux pour le serveur.";
     if (status >= 500) {
       return text && !text.startsWith("<") && text !== "Internal Server Error"
@@ -532,6 +534,7 @@
     upperFirst,
     METHODS,
     NETWORK_ERROR,
+    API_KEY_PROMPT,
     patternLabel,
     patternDescription,
     methodLabel,

@@ -75,8 +75,9 @@ investigation interface itself does not). Values coming from the data are always
   df = load_dataset("data/HI-Small_Trans.csv")
   df[temporal_split(df)["test"]].to_csv("data/HI-Small-test_Trans.csv")
   ```
-* There are no user accounts and no authentication: run it on your workstation (the default
-  `127.0.0.1` binding) or behind an authenticating reverse proxy, and never expose real customer
-  data on a public address.
+* There are no user accounts: an optional shared key (`AMLGM_API_KEY`, see {doc}`rest_api`)
+  locks the data routes, and the interface asks for it once per browser tab. Run it on your
+  workstation (the default `127.0.0.1` binding) or behind an authenticating reverse proxy, and
+  never expose real customer data on a public address.
 * Metrics shown on a labelled file are computed on the whole file; if the detector was trained on
   part of it they are optimistic — use `amlgm benchmark` for an evaluation on a temporal split.

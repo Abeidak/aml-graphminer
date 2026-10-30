@@ -18,7 +18,7 @@ pip install "aml-graphminer[all]"          # everything (+ Captum, Parquet, Pola
 | `explain` | `captum` | the Captum (Integrated Gradients) explainer |
 | `api` | `fastapi`, `uvicorn`, `python-multipart` | `amlgm serve`: REST API, web interface, file upload |
 | `parquet` | `pyarrow` | Parquet input |
-| `scale` | `polars`, `pyarrow` | fast CSV reading on the *Medium*/*Large* IBM files |
+| `scale` | `polars`, `pyarrow` | faster CSV reading (`engine="polars"`: −26 % time, more memory; see {doc}`data`) |
 | `xgboost` | `xgboost` | the `xgb` baseline |
 | `tracking` | `mlflow` | `--mlflow` |
 | `hub` | `huggingface_hub` | `amlgm export-hub --push` |

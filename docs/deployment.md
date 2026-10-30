@@ -17,8 +17,8 @@ docker run --rm -p 127.0.0.1:8000:8000 -v "$PWD/runs:/models:ro" aml-graphminer 
 docker build -f docker/Dockerfile -t aml-graphminer:gnn --build-arg WITH_GNN=1 .    # + PyTorch / PyG (CPU)
 ```
 
-Three compose files, all bound to `127.0.0.1` only (the API has no authentication, see
-{doc}`rest_api`), with a read-only root filesystem and no capabilities:
+Three compose files, all bound to `127.0.0.1` only (the API has only an optional shared key,
+see {doc}`rest_api`), with a read-only root filesystem and no capabilities:
 
 ```bash
 docker compose -f docker/docker-compose.demo.yml up --build                   # web interface + synthetic demo
@@ -34,8 +34,9 @@ experiment tracking run `mlflow ui` (or a server of your choice) on the host and
 
 The image is a standard HTTP service on port 8000 (`GET /health` for health checks), so any
 container platform works (Render, Fly.io, Railway, a university VM ...). Use the demo command for a
-public showcase; for real data add authentication in front (reverse proxy, VPN) — the API has
-none — and never upload real customer data to a public instance. `amlgm serve --max-upload-mb N`
+public showcase; for real data set an API key (`AMLGM_API_KEY` in the platform's secret
+settings) and put HTTPS and user authentication in front (reverse proxy, VPN), and never upload
+real customer data to a public instance. `amlgm serve --max-upload-mb N`
 caps the size of the files visitors can upload (512 MB by default).
 
 ### Render (free)

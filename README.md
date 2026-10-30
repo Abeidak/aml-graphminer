@@ -195,6 +195,7 @@ français : [GUIDE_FR.md](GUIDE_FR.md).
 ## Authors
 
 Ahmed Ahmed Mahmoud Abeideck and Saade Jaavar Boubacar (master's final-year project, Faculty of Sciences and Techniques, University of
-Nouakchott), supervised by Ahmed El Emine Sejad (academic supervisor) and Mohamedou El Ghotob Cheikh Tourad
+Nouakchott), supervised by Ahmed El Emine Sejad (academic supervisor, Higher Institute of Accounting and Business
+Administration, ISCAE) and Mohamedou El Ghotob Cheikh Tourad
 (professional supervisor, Al-Khawarizmi Research Unit). How to cite the software:
 [CITATION.cff](CITATION.cff).

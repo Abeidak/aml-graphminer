@@ -120,7 +120,7 @@ async function main() {
     { text: "Projet de fin d'études — Master", options: { breakLine: true } },
     { text: "Unité de recherche Al-Khawarizmi · FST · Université de Nouakchott", options: { breakLine: true } },
     { text: "Ahmed Ahmed Mahmoud Abeideck · Saade Jaavar Boubacar", options: { breakLine: true } },
-    { text: "Encadrant académique : Ahmed El Emine Sejad", options: { breakLine: true } },
+    { text: "Encadrant académique : Ahmed El Emine Sejad (ISCAE)", options: { breakLine: true } },
     { text: "Encadrant professionnel : Mohamedou El Ghotob Cheikh Tourad" },
   ], { x: 0.7, y: 4.5, w: 7.4, h: 1.6, fontSize: 15, color: "C9D3E6", paraSpaceAfter: 4, objectName: "a4_who" });
   s.addNotes("Bonjour. Je présente AML-GraphMiner, une boîte à outils open source qui détecte le blanchiment d'argent dans des graphes de transactions et explique chaque alerte. Le graphe à droite illustre l'idée : le blanchiment se cache dans des structures — ici un cycle en rouge — au milieu de transactions ordinaires.");

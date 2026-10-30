@@ -12,7 +12,7 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | livrable | état | détail |
 |---|---|---|
 | L1 — Code source GitHub, licence MIT | ✅ | Dépôt **public** https://github.com/Abeidak/aml-graphminer (depuis le 29/10/2026), CI verte. Reste (facultatif) : ORCID dans `CITATION.cff`. |
-| L2 — Package PyPI | ✅ | Publié : https://pypi.org/project/aml-graphminer/ — 0.1.0 le 29/10/2026, 0.1.1 le 30/10/2026 (les deux auteurs affichés) ; `pip install aml-graphminer` vérifié dans un environnement vierge. Publication automatique à chaque étiquette `vX.Y.Z`. |
+| L2 — Package PyPI | ✅ | Publié : https://pypi.org/project/aml-graphminer/ — 0.1.0 le 29/10/2026 ; 0.1.1 prête (les deux auteurs affichés), en attente de son étiquette ; `pip install aml-graphminer` vérifié dans un environnement vierge. Publication automatique à chaque étiquette `vX.Y.Z`. |
 | L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | ✅ | En ligne depuis le 29/10/2026 : https://aml-graphminer-demo.onrender.com/ui/ et https://aml-graphminer-demo.onrender.com/docs (Render, offre gratuite, données synthétiques, envois limités à 20 Mo ; veille après 15 min sans visite). |
 | L4 — CLI Click `amlgm scan\|train\|explain` | ✅ | + `eda`, `score`, `benchmark`, `serve`, `explain --top` (lot d'alertes), `train --model hybrid`, exports Neo4j / Hub. |
 | L5 — Sphinx + 3 notebooks + ReadTheDocs | ✅ | Documentation en ligne : https://aml-graphminer.readthedocs.io/ (construite sans erreur), notebooks 01–05 (01–03 et 05 exécutés, vérifiés par nbval en CI ; 05 = plugin Jupyter). |
@@ -99,7 +99,7 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
    motifs, **13/13 sur Render** après déploiement (API : 25/25 sur Render).
 8. 29–30/10 : **auteurs et encadrement** — Ahmed Ahmed Mahmoud Abeideck et Saade Jaavar Boubacar ;
    encadrant académique Ahmed El Emine Sejad, encadrant professionnel Mohamedou El Ghotob Cheikh
-   Tourad (README, `CITATION.cff`, `LICENSE`, diapositive de titre) ; **PyPI** 0.1.0 puis 0.1.1 ;
+   Tourad (README, `CITATION.cff`, `LICENSE`, diapositive de titre) ; **PyPI** 0.1.0 (0.1.1 prête) ;
    interface web : **graphe des 5 alertes les plus fortes** sur la vue d'ensemble, première alerte
    ouverte avec son sous-graphe, composantes séparées d'un graphe disposées côte à côte.
 
@@ -112,7 +112,7 @@ Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8
 - [x] Auteurs et e-mails (`pyproject.toml`, `CITATION.cff`, `LICENSE`, `paper/main.tex`,
       diapositive de titre) ; ORCID facultatif, plus tard.
 - [x] Dépôt public, ReadTheDocs, modèles sur le Hugging Face Hub (privés), API en ligne (Render).
-- [x] Publication PyPI (0.1.0 puis 0.1.1).
+- [x] Publication PyPI 0.1.0. [ ] 0.1.1 (étiquette `v0.1.1`, sur votre accord).
 - [ ] Zenodo (DOI de la version), compléter C2 / C8 / C9 de l'article.
 - [ ] Décider si les modèles du Hub deviennent publics (liens de l'article et du README).
 - [ ] Supprimer le fichier de clé Render et révoquer la clé (tableau de bord Render).

@@ -120,7 +120,7 @@ Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8
       (conflits d'intérêts, IA), compilation Overleaf, soumission à Software Impacts.
 - [ ] Mémoire : rédaction à partir de `paper/memoire_plan.md`, captures de l'interface web,
       relecture des diapositives dans PowerPoint, soutenance.
-- [ ] Validation des alertes et explications avec un expert métier (`RELEASE.md`).
+- [ ] Validation des alertes et explications avec un expert métier : kit prêt (`scripts/expert_review.py`, grille de 50 éléments dans `results/expert-review/`, procédure dans `GUIDE_FR.md` §7) ; reste à la faire remplir.
 
 ### Pistes techniques possibles (je peux les faire si vous le demandez)
 

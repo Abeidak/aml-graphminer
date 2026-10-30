@@ -217,6 +217,22 @@ Puis <http://127.0.0.1:7474> et les requêtes de `neo4j-import\queries.cypher` (
    `MyDrive/aml/`), mais la session gratuite s'arrête si l'onglet reste inactif et LI-Small peut
    dépasser sa mémoire.
 
+### Faire valider les alertes par un expert
+
+Un analyste LBC juge à l'aveugle 50 éléments mélangés : 30 alertes de motifs, 10 transactions
+signalées par le modèle et 10 transactions témoins non signalées, d'abord sur les faits, puis
+après avoir lu l'explication de l'outil.
+
+```powershell
+python scripts\expert_review.py build data\HI-Small-test_Trans.csv --model runs\sage-HI-Small --config configs\patterns.yaml --method captum --out results\expert-review
+```
+
+Envoyez à l'expert `results\expert-review\grille_expert.csv` (s'ouvre dans Excel) et
+`CONSIGNES.md`, **jamais** `cle_de_correction.csv` (exclu de Git). À son retour :
+`python scripts\expert_review.py score grille_remplie.csv results\expert-review\cle_de_correction.csv`
+donne la part jugée suspecte par groupe, l'accord avec la vérité terrain avant et après
+explication, et l'utilité moyenne des explications.
+
 ---
 
 ## 8. Livrables qui demandent votre action (comptes personnels)

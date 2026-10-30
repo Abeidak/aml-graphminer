@@ -443,10 +443,12 @@
     } else {
       text =
         `Score ${fmt.score(e.score)} ; ` +
-        (top
-          ? `transaction voisine la plus influente : n° ${top.tx_id} (${top.sender} → ${top.receiver}, ` +
-            `importance ${fmt.num(top.importance, 3)}).`
-          : "aucune transaction voisine.");
+        (!top
+          ? "aucune transaction voisine."
+          : Math.abs(top.importance) < 0.0005
+            ? "aucune transaction voisine n'a d'importance notable (toutes sous 0,001)."
+            : `transaction voisine la plus influente : n° ${top.tx_id} (${top.sender} → ${top.receiver}, ` +
+              `importance ${fmt.num(top.importance, 3)}).`);
     }
     const features = e.features || [];
     if (e.method === "gnnexplainer" && features.length) {
@@ -464,7 +466,8 @@
     if (details.neighbourhood_effect !== undefined) {
       text +=
         ` Sans ses ${plural(details.neighbours, "transaction voisine", "transactions voisines")}, le score serait de ` +
-        `${fmt.score(details.score_without_neighbours)} (effet mesuré du voisinage : ${fmt.signed(details.neighbourhood_effect)}).`;
+        `${fmt.score(details.score_without_neighbours)} (effet mesuré du voisinage : ` +
+        `${Math.abs(details.neighbourhood_effect) < 0.0005 ? "nul à 0,001 près" : fmt.signed(details.neighbourhood_effect)}).`;
     }
     return text;
   }

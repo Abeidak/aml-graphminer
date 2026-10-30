@@ -411,7 +411,7 @@
       forceLayout(nodes, links, W, H);
       return;
     }
-    const gap = 40;
+    const gap = 60; // room for the account labels between two groups
     let x = 0;
     let y = 0;
     let rowHeight = 0;
@@ -419,7 +419,7 @@
       const local = new Map(members.map((i, k) => [i, k]));
       const sub = members.map((i) => nodes[i]);
       const subLinks = links.filter(([a]) => local.has(a)).map(([a, b]) => [local.get(a), local.get(b)]);
-      const side = Math.max(90, 70 * Math.sqrt(members.length));
+      const side = Math.max(110, 70 * Math.sqrt(members.length));
       forceLayout(sub, subLinks, side, side);
       const minX = Math.min(...sub.map((n) => n.x));
       const minY = Math.min(...sub.map((n) => n.y));
@@ -662,12 +662,11 @@
     const xs = nodes.map((n) => n.x);
     const ys = nodes.map((n) => n.y);
     const pad = 40;
-    let view = {
-      x: Math.min(...xs) - pad,
-      y: Math.min(...ys) - pad,
-      w: Math.max(Math.max(...xs) - Math.min(...xs) + 2 * pad, 200),
-      h: Math.max(Math.max(...ys) - Math.min(...ys) + 2 * pad, 150),
-    };
+    const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    // a small graph is not blown up: the frame shows at least 420 x 250 units around it
+    const frameW = Math.max(maxX - minX + 2 * pad, 420);
+    const frameH = Math.max(maxY - minY + 2 * pad, 250);
+    let view = { x: (minX + maxX) / 2 - frameW / 2, y: (minY + maxY) / 2 - frameH / 2, w: frameW, h: frameH };
     const initial = { ...view };
     const applyView = () => svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`);
 

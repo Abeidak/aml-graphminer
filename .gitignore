@@ -49,3 +49,6 @@ paper/soutenance/node_modules/
 tests/e2e/node_modules/
 tests/e2e/shots/
 tests/e2e/upload.csv
+
+# expert review kit: the answer key must not be published
+results/expert-review/

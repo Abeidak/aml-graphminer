@@ -15,6 +15,10 @@ All notable changes are documented here. The format follows
   `scripts/check_service.py --api-key` checks a protected service.
 - `benchmarks/io_engines.py`: time and peak memory of `load_dataset` with pandas or Polars, each in
   a fresh process (`benchmarks/results_parts/io/`).
+- `scripts/expert_review.py`: blind review of the alerts by an AML expert — a shuffled grid of motif
+  alerts, model-flagged transactions and unflagged controls (French texts from `fr.js`), judged
+  from the facts then after the tool's explanation, an answer key kept apart, and the scoring of
+  the filled grid.
 
 ### Changed
 
@@ -25,6 +29,10 @@ All notable changes are documented here. The format follows
 
 ### Fixed
 
+- Web interface: a graph made of a few small groups was blown up (huge nodes, overlapping
+  labels); the frame now shows at least 420 × 250 units and groups are spaced further apart.
+- French summaries no longer print a rounded zero ("importance -0,000", "effet … −0,000"): a
+  near-zero effect is worded as such.
 - The Polars reading engine was documented as lighter on memory; measured on HI-Small it is
   faster (12.8 s instead of 17.3 s for `load_dataset`) but peaks higher (4.2 GB instead of 2.6 GB).
 

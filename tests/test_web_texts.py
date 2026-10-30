@@ -225,9 +225,19 @@ def test_a_tiny_effect_is_not_written_as_zero():
     occlusion = Explanation(1, "occlusion", 1.0, 0.5, edges, details={"neighbours": 1}).to_dict()
     captum = _gnn("captum")
     captum["features"][0]["importance"] = -0.0001
-    occluded, attributed = fr(["explanationSummary", occlusion], ["explanationSummary", captum])
+    flat = _gnn(
+        "attention", neighbours=2, score_without_neighbours=0.81, neighbourhood_effect=-0.0002
+    )
+    flat["edges"][1]["importance"] = flat["edges"][2]["importance"] = 0.0001
+    occluded, attributed, unmoved = fr(
+        ["explanationSummary", occlusion],
+        ["explanationSummary", captum],
+        ["explanationSummary", flat],
+    )
     assert occluded.endswith(" : elle augmente le score de moins de 0,001.")  # not "de 0,000"
     assert "il diminue la probabilité de moins de 0,001." in attributed
+    assert "aucune transaction voisine n'a d'importance notable" in unmoved
+    assert unmoved.endswith("(effet mesuré du voisinage : nul à 0,001 près).")  # not a signed zero
 
 
 def test_attributes_of_the_models_have_french_names():

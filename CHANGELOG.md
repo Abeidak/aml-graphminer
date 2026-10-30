@@ -4,6 +4,22 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-10-30
+
+### Added
+
+- Web interface: the dashboard opens on the **graph of the five strongest alerts** (accounts
+  and transactions, click a node for its profile), and the *Alertes* tab shows the strongest
+  alert with its sub-graph at once.
+- README and `CITATION.cff`: the two authors and the two supervisors.
+
+### Fixed
+
+- PyPI showed the first author only: the names are now in `Author`, the addresses in
+  `Maintainer-email`.
+- Graphs made of several separate groups (several alerts) were drawn as tiny dots: every
+  connected component is now laid out on its own and the components are packed in rows.
+
 ## [0.1.0] - 2026-10-29
 
 First public version, built from the two Colab notebooks of the project (GCN / GraphSAGE / GAT on

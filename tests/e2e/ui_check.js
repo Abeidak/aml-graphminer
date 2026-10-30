@@ -93,18 +93,20 @@ const englishSeen = new Map(); // English word -> where it was seen
     return (await page.$eval("#model-badge", (e) => e.textContent.trim())).slice(0, 80);
   });
 
-  await check("demo dataset: dashboard (KPIs, 5 charts, metrics)", async () => {
+  await check("demo dataset: dashboard (KPIs, alert graph, 5 charts, metrics)", async () => {
     await page.click("#btn-demo");
     await page.waitForFunction(() => document.querySelectorAll("#kpis > *").length > 0);
     await idle();
     await page.waitForFunction(() => ["#chart-daily", "#chart-patterns", "#chart-scores", "#chart-amounts", "#chart-formats"]
       .every((s) => document.querySelector(s).children.length > 0));
+    await page.waitForSelector("#overview-graph svg circle");
     await shot("02-tableau-de-bord.png");
     await scanEnglish("dashboard");
     const kpis = await page.$$eval("#kpis > *", (els) => els.length);
     const metrics = await page.$eval("#metrics", (e) => e.textContent.trim().length);
     ensure(metrics > 0, "no metrics");
-    return `${kpis} indicators, 5 charts, metrics shown`;
+    const nodes = await page.$$eval("#overview-graph svg circle", (c) => c.length);
+    return `${kpis} indicators, graph of the strongest alerts (${nodes} accounts), 5 charts, metrics shown`;
   });
 
   await check("alerts tab: table, filter, evidence + sub-graph", async () => {

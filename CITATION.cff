@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
 title: "AML-GraphMiner: an open-source toolkit for explainable money-laundering detection on transaction graphs"
-version: 0.1.0
-date-released: 2026-10-29
+version: 0.1.1
+date-released: 2026-10-30
 license: MIT
 repository-code: "https://github.com/Abeidak/aml-graphminer"
 abstract: >-
@@ -25,7 +25,10 @@ authors:
   - family-names: "Saade Jaavar Boubacar"
     email: "saadejaavar21@gmail.com"
     affiliation: "Faculté des Sciences et Techniques, Université de Nouakchott"
+  # academic supervisor
+  - family-names: "Ahmed El Emine Sejad"
+  # professional supervisor
   - family-names: "Cheikh Tourad"
     given-names: "Mohamedou El Ghotob"
     affiliation: "Unité de Recherche Al-Khawarizmi, Université de Nouakchott"
-    # TODO: add the supervisor's ORCID (https://orcid.org/...) after checking it with them.
+    orcid: "https://orcid.org/0000-0003-1273-7512"

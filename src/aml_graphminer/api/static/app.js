@@ -188,6 +188,7 @@
     if (!overview) return;
     state.overview = overview;
     renderOverview(state.overview);
+    loadAlertNetwork(id).catch((error) => $("#overview-graph").replaceChildren(errorBox(error)));
     fillPatternFilter();
     $("#alert-detail").replaceChildren(placeholder("Sélectionnez une alerte pour voir ses preuves et son sous-graphe."));
     $("#tx-detail").replaceChildren(placeholder("Sélectionnez une transaction pour l'expliquer."));
@@ -356,6 +357,52 @@
   }
 
   // ------------------------------------------------------------------ graph view
+  // Separate groups of accounts (several alerts in one graph) would be pushed far apart by the
+  // repulsion and shrunk to dots: each connected component is laid out alone, then the
+  // components are packed in rows, largest first.
+  function layoutGraph(nodes, links, W, H) {
+    const parent = nodes.map((_, i) => i);
+    const root = (i) => (parent[i] === i ? i : (parent[i] = root(parent[i])));
+    for (const [a, b] of links) parent[root(a)] = root(b);
+    const groups = new Map();
+    nodes.forEach((_, i) => {
+      const r = root(i);
+      if (!groups.has(r)) groups.set(r, []);
+      groups.get(r).push(i);
+    });
+    const components = [...groups.values()].sort((a, b) => b.length - a.length);
+    if (components.length < 2) {
+      forceLayout(nodes, links, W, H);
+      return;
+    }
+    const gap = 40;
+    let x = 0;
+    let y = 0;
+    let rowHeight = 0;
+    for (const members of components) {
+      const local = new Map(members.map((i, k) => [i, k]));
+      const sub = members.map((i) => nodes[i]);
+      const subLinks = links.filter(([a]) => local.has(a)).map(([a, b]) => [local.get(a), local.get(b)]);
+      const side = Math.max(90, 70 * Math.sqrt(members.length));
+      forceLayout(sub, subLinks, side, side);
+      const minX = Math.min(...sub.map((n) => n.x));
+      const minY = Math.min(...sub.map((n) => n.y));
+      const width = Math.max(...sub.map((n) => n.x)) - minX;
+      const height = Math.max(...sub.map((n) => n.y)) - minY;
+      if (x > 0 && x + width > W) {
+        x = 0;
+        y += rowHeight + gap;
+        rowHeight = 0;
+      }
+      sub.forEach((n) => {
+        n.x += x - minX;
+        n.y += y - minY;
+      });
+      x += width + gap;
+      rowHeight = Math.max(rowHeight, height);
+    }
+  }
+
   function forceLayout(nodes, links, W, H) {
     const n = nodes.length;
     nodes.forEach((d, i) => {
@@ -432,7 +479,7 @@
     const nodes = graph.nodes.map((n) => ({ ...n }));
     const position = new Map(nodes.map((n, i) => [n.id, i]));
     const edges = graph.edges.filter((e) => position.has(e.source) && position.has(e.target));
-    forceLayout(nodes, edges.map((e) => [position.get(e.source), position.get(e.target)]), W, H);
+    layoutGraph(nodes, edges.map((e) => [position.get(e.source), position.get(e.target)]), W, H);
 
     // sizes and colours
     const maxImpNode = Math.max(1e-12, ...nodes.map((n) => Math.abs(n.importance || 0)));
@@ -916,6 +963,44 @@
     );
     $("#alert-count").textContent = `${fmt.int(page.total)} alerte(s)`;
     pager($("#alerts-pager"), state.alerts, page.total, loadAlerts);
+    // nothing selected yet: open the strongest alert, so its sub-graph is on screen at once
+    if (page.items.length && !$("#alert-detail h2")) showAlert(page.items[0].alert_id, $("#alerts-table tbody tr"));
+  }
+
+  // ------------------------------------------------------------------ network of the strongest alerts
+  const NETWORK_ALERTS = 5;
+
+  async function loadAlertNetwork(id) {
+    const box = $("#overview-graph");
+    box.replaceChildren(placeholder("Chargement du graphe…"));
+    const page = await fetchFor(id, `/datasets/${id}/alerts?limit=${NETWORK_ALERTS}`);
+    if (!page) return;
+    if (!page.items.length) {
+      box.replaceChildren(placeholder("Aucune alerte de motif : pas de graphe à montrer."));
+      return;
+    }
+    const details = await Promise.all(page.items.map((a) => fetchFor(id, `/datasets/${id}/alerts/${a.alert_id}`)));
+    if (details.some((d) => !d)) return;
+    // one graph: accounts and transactions of these alerts (an account shared by two alerts once)
+    const nodes = new Map();
+    const edges = new Map();
+    for (const d of details) {
+      for (const n of d.graph.nodes) {
+        const seen = nodes.get(n.id);
+        nodes.set(n.id, seen ? { ...seen, score: Math.max(seen.score, n.score), highlight: seen.highlight || n.highlight } : { ...n });
+      }
+      for (const e of d.graph.edges) edges.set(e.id, e);
+    }
+    const motifs = details.map((d) => `n° ${d.alert_id} ${fmt.pattern(d.pattern)}`).join(", ");
+    box.replaceChildren(
+      graphView({ nodes: [...nodes.values()], edges: [...edges.values()] }, { mode: "score" }),
+      h(
+        "p",
+        { class: "muted small" },
+        `${fmt.int(nodes.size)} comptes et ${fmt.int(edges.size)} transactions des ${details.length} alertes les plus fortes ` +
+          `(${motifs}). Cliquez un nœud pour le profil du compte ; l'onglet « Alertes » détaille chaque alerte.`,
+      ),
+    );
   }
 
   async function showAlert(alertId, row) {

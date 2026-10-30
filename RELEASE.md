@@ -8,8 +8,8 @@ CI and must be checked by a person.
 - [x] ⚠ Replace every `OWNER` with the real GitHub user (`Abeidak`; repository
       https://github.com/Abeidak/aml-graphminer, private until the release).
 - [x] ⚠ `CITATION.cff` and `pyproject.toml`: real author names and e-mail addresses (ORCID iDs
-      optional, later). The `TODO` markers left in `CITATION.cff` (release date, supervisor's
-      ORCID) are filled in when tagging.
+      optional, later). Release date and version of `CITATION.cff` (no `TODO` marker left) are
+      updated with every tag.
 - [ ] ⚠ Confirm the licence of the generated documentation and of any text copied from the
       project specification.
 - [ ] ⚠ Run notebook `04_gnn_training_colab` on a Colab GPU; commit it with its outputs. Push the

@@ -11,6 +11,12 @@ requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
+    { name = "Ahmed Ahmed Mahmoud Abeideck" },
+    { name = "Saade Jaavar Boubacar" },
+]
+# PyPI lists every name of the authors but only the first one of an e-mail list: the
+# addresses go here
+maintainers = [
     { name = "Ahmed Ahmed Mahmoud Abeideck", email = "abeideck.ahmed@gmail.com" },
     { name = "Saade Jaavar Boubacar", email = "saadejaavar21@gmail.com" },
 ]

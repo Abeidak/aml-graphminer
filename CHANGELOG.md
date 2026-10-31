@@ -33,6 +33,10 @@ All notable changes are documented here. The format follows
   labels); the frame now shows at least 420 × 250 units and groups are spaced further apart.
 - French summaries no longer print a rounded zero ("importance -0,000", "effet … −0,000"): a
   near-zero effect is worded as such.
+- Web interface: closing a dataset while its strongest alert or its alert graph were still loading
+  left requests that the server answered with 404, and a late answer could put an error in the
+  next dataset's panel. Closing now cancels the dataset's pending requests, and the alert,
+  transaction, explanation and account panels ignore answers for a dataset no longer shown.
 - The Polars reading engine was documented as lighter on memory; measured on HI-Small it is
   faster (12.8 s instead of 17.3 s for `load_dataset`) but peaks higher (4.2 GB instead of 2.6 GB).
 

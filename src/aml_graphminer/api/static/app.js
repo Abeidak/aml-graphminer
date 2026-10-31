@@ -193,15 +193,28 @@
   // An answer that arrives after the user switched to (or closed) another dataset is ignored:
   // otherwise a slow request could fill the tables with the previous dataset's rows.
   const stale = (id) => id !== state.datasetId;
+  const inflight = new Map(); // dataset id -> AbortControllers of its pending requests
 
   async function fetchFor(id, path) {
+    const controller = new AbortController();
+    if (!inflight.has(id)) inflight.set(id, new Set());
+    const pending = inflight.get(id);
+    pending.add(controller);
     try {
-      const data = await api(path);
+      const data = await api(path, { signal: controller.signal });
       return stale(id) ? null : data;
     } catch (error) {
-      if (stale(id)) return null; // e.g. 404: the dataset was closed meanwhile
+      if (stale(id)) return null; // cancelled, or 404: the dataset was closed meanwhile
       throw error;
+    } finally {
+      pending.delete(controller);
     }
+  }
+
+  // closing a dataset cancels its pending requests: the server would answer them with a 404
+  function abortRequests(id) {
+    for (const controller of inflight.get(id) || []) controller.abort();
+    inflight.delete(id);
   }
 
   async function selectDataset(id) {
@@ -261,16 +274,19 @@
   }
 
   async function closeDataset() {
-    if (!state.datasetId || state.closing) return;
+    const id = state.datasetId;
+    if (!id || state.closing) return;
     // disabled until the next dataset is loaded: a double click must not close two datasets
     state.closing = true;
     $("#btn-delete").disabled = true;
     try {
-      await api(`/datasets/${state.datasetId}`, { method: "DELETE" });
-      state.datasetId = null;
+      state.datasetId = null; // answers still on their way for this dataset are now stale
+      abortRequests(id);
+      await api(`/datasets/${id}`, { method: "DELETE" });
       await refreshDatasets();
       setStatus("Jeu de données fermé.");
     } catch (error) {
+      if (state.datasetId === null) state.datasetId = id; // not closed: it stays the current one
       fail(error);
     } finally {
       state.closing = false;
@@ -1039,11 +1055,13 @@
   }
 
   async function showAlert(alertId, row) {
+    const id = state.datasetId;
     markSelected($("#alerts-table"), row);
     const pane = $("#alert-detail");
     pane.replaceChildren(placeholder("Chargement…"));
     try {
-      const a = await api(`/datasets/${state.datasetId}/alerts/${alertId}`);
+      const a = await fetchFor(id, `/datasets/${id}/alerts/${alertId}`);
+      if (!a) return;
       pane.replaceChildren(
         h("h2", {}, `Alerte n° ${a.alert_id} — ${fmt.pattern(a.pattern)}`),
         h("div", { class: "summary" }, `${FR.upperFirst(FR.patternDescription(a.pattern, a.description))}.`),
@@ -1108,11 +1126,13 @@
   }
 
   async function showTransaction(txId, row) {
+    const id = state.datasetId;
     markSelected($("#tx-table"), row);
     const pane = $("#tx-detail");
     pane.replaceChildren(placeholder("Chargement…"));
     try {
-      const t = await api(`/datasets/${state.datasetId}/transactions/${txId}`);
+      const t = await fetchFor(id, `/datasets/${id}/transactions/${txId}`);
+      if (!t) return;
       const method = h(
         "select",
         { "aria-label": "Méthode d'explication" },
@@ -1207,12 +1227,14 @@
   }
 
   async function explain(txId, method, hops, output) {
+    const id = state.datasetId;
     output.replaceChildren(
       placeholder(method === "pgexplainer" ? "Entraînement de PGExplainer sur les alertes les plus fortes…" : "Calcul de l'explication…"),
     );
     try {
       const params = new URLSearchParams({ method, hops, max_edges: 60 });
-      const e = await api(`/datasets/${state.datasetId}/transactions/${txId}/explain?${params}`);
+      const e = await fetchFor(id, `/datasets/${id}/transactions/${txId}/explain?${params}`);
+      if (!e) return;
       const neighbours = e.edges
         .filter((x) => x.role !== "target")
         .sort((a, b) => Math.abs(b.importance) - Math.abs(a.importance))
@@ -1247,11 +1269,13 @@
 
   // ------------------------------------------------------------------ accounts
   async function showAccount(account) {
+    const id = state.datasetId;
     const box = $("#account-detail");
-    if (!state.datasetId || !account) return;
+    if (!id || !account) return;
     box.replaceChildren(placeholder("Chargement…"));
     try {
-      const a = await api(`/datasets/${state.datasetId}/accounts/${encodeURIComponent(account)}`);
+      const a = await fetchFor(id, `/datasets/${id}/accounts/${encodeURIComponent(account)}`);
+      if (!a) return;
       const risky = a.max_score >= threshold() ? "alert" : "";
       box.replaceChildren(
         h(

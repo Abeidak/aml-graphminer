@@ -23,6 +23,7 @@ const results = [];
 const problems = [];
 const exportsSeen = new Set();
 let initialIds = []; // datasets that existed before the check: never closed by it
+const closedByCheck = new Set();
 
 async function check(name, fn) {
   const t0 = Date.now();
@@ -61,8 +62,10 @@ const englishSeen = new Map(); // English word -> where it was seen
   page.on("pageerror", (e) => problems.push(`page error: ${e.message}`));
   page.on("requestfailed", (r) => {
     const err = r.failure() && r.failure().errorText;
-    // a download ends the request with ERR_ABORTED: checked through the saved file instead
-    if (!(r.url().includes("/export/") && err === "net::ERR_ABORTED")) problems.push(`request failed: ${r.url()} ${err}`);
+    // a download ends the request with ERR_ABORTED: checked through the saved file instead;
+    // closing a dataset cancels its pending requests on purpose
+    const closed = [...closedByCheck].some((id) => r.url().includes(`/datasets/${id}/`));
+    if (!((r.url().includes("/export/") || closed) && err === "net::ERR_ABORTED")) problems.push(`request failed: ${r.url()} ${err}`);
   });
   page.on("response", (r) => {
     if (r.url().includes("/export/")) exportsSeen.add(`${r.url().split("/export/")[1]} ${r.status()}`);
@@ -78,7 +81,8 @@ const englishSeen = new Map(); // English word -> where it was seen
       ...[...document.querySelectorAll("[title]")].map((e) => e.title).filter((t) => !t.startsWith("nom technique")),
       ...[...document.querySelectorAll("svg title, option")].map((e) => e.textContent),
     ]);
-    for (const text of texts) {
+    for (const raw of texts) {
+      const text = raw.replace(/[\w.-]+\.(?:csv|parquet|json|txt)\b/gi, " "); // file names are the user's
       for (const m of text.matchAll(ENGLISH)) {
         if (!englishSeen.has(m[0])) englishSeen.set(m[0], `${where}: …${text.slice(Math.max(0, m.index - 50), m.index + 50)}…`);
       }
@@ -232,6 +236,7 @@ const englishSeen = new Map(); // English word -> where it was seen
           && document.querySelector("#overlay").hidden, { timeout: 120000, polling: 250 }, id);
       }
       const before = (await ids()).length;
+      closedByCheck.add(id);
       if (k === 0) {
         // two clicks in the same instant: the second one must be ignored
         const disabledAtOnce = await page.evaluate(() => {

@@ -1,4 +1,4 @@
-# État du projet AML-GraphMiner (mis à jour le 29/10/2026)
+# État du projet AML-GraphMiner (mis à jour le 31/10/2026)
 
 Suivi de tout ce qui a été fait et de ce qui reste, par rapport au cahier des charges (CDC) et à
 la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/results/REPORT.md`,
@@ -12,13 +12,13 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
 | livrable | état | détail |
 |---|---|---|
 | L1 — Code source GitHub, licence MIT | ✅ | Dépôt **public** https://github.com/Abeidak/aml-graphminer (depuis le 29/10/2026), CI verte. Reste (facultatif) : ORCID dans `CITATION.cff`. |
-| L2 — Package PyPI | ✅ | Publié : https://pypi.org/project/aml-graphminer/ — 0.1.0 le 29/10/2026 ; 0.1.1 prête (les deux auteurs affichés), en attente de son étiquette ; `pip install aml-graphminer` vérifié dans un environnement vierge. Publication automatique à chaque étiquette `vX.Y.Z`. |
+| L2 — Package PyPI | ✅ | Publié : https://pypi.org/project/aml-graphminer/ — 0.1.0 le 29/10/2026, 0.1.1 le 30/10/2026 (les deux auteurs affichés) ; `pip install aml-graphminer` vérifié dans un environnement vierge. Publication automatique à chaque étiquette `vX.Y.Z`. |
 | L3 — API REST FastAPI (OpenAPI 3.1) + Docker + déploiement cloud | ✅ | En ligne depuis le 29/10/2026 : https://aml-graphminer-demo.onrender.com/ui/ et https://aml-graphminer-demo.onrender.com/docs (Render, offre gratuite, données synthétiques, envois limités à 20 Mo ; veille après 15 min sans visite). |
 | L4 — CLI Click `amlgm scan\|train\|explain` | ✅ | + `eda`, `score`, `benchmark`, `serve`, `explain --top` (lot d'alertes), `train --model hybrid`, exports Neo4j / Hub. |
 | L5 — Sphinx + 3 notebooks + ReadTheDocs | ✅ | Documentation en ligne : https://aml-graphminer.readthedocs.io/ (construite sans erreur), notebooks 01–05 (01–03 et 05 exécutés, vérifiés par nbval en CI ; 05 = plugin Jupyter). |
 | L6 — Modèles pré-entraînés sur Hugging Face | ✅ (privés) | 12 modèles HI-Small en dépôts privés `abeideck/aml-graphminer-<modèle>-hi-small`, rechargés avec succès depuis le Hub. Reste (facultatif) : les rendre publics, ajouter LI-Small. |
 | L7 — Article Software Impacts | 🟡 👤 | `paper/main.tex` complet selon le plan du CDC, résultats mesurés, 23 références. Auteurs renseignés. Reste : DOI Zenodo, déclarations, source pour le chiffre du marché AML, compilation sur Overleaf, soumission. |
-| L8 — Mémoire 60–80 p. + soutenance | 🟡 | Plan détaillé avec résultats (`paper/memoire_plan.md`), 16 diapositives colorées et animées, discours dans les notes (`paper/soutenance/`). Diapositive 1 : les deux auteurs et l'encadrant. Reste : rédaction du mémoire, répétition. |
+| L8 — Mémoire 60–80 p. + soutenance | 🟡 | **Mémoire rédigé : 71 pages** (Word et PDF dans `paper/memoire/`, A4, Times New Roman 12, interligne 1,5, sommaire, 15 figures, annexes A à G), tenu **hors du dépôt public** jusqu'à la soutenance (un logiciel anti-plagiat retrouverait sinon le texte en ligne). 16 diapositives avec les deux auteurs et les deux encadrants, discours dans les notes (`paper/soutenance/`). Reste : vos dédicaces, le jury et la date, la déclaration d'usage de l'IA, les références mauritaniennes marquées « À vérifier », relecture, répétition. |
 
 ## 2. Jalons (J1–J4)
 
@@ -99,9 +99,23 @@ la fiche sujet. Tous les chiffres sont **mesurés** (sources : `benchmarks/resul
    motifs, **13/13 sur Render** après déploiement (API : 25/25 sur Render).
 8. 29–30/10 : **auteurs et encadrement** — Ahmed Ahmed Mahmoud Abeideck et Saade Jaavar Boubacar ;
    encadrant académique Ahmed El Emine Sejad, encadrant professionnel Mohamedou El Ghotob Cheikh
-   Tourad (README, `CITATION.cff`, `LICENSE`, diapositive de titre) ; **PyPI** 0.1.0 (0.1.1 prête) ;
+   Tourad (README, `CITATION.cff`, `LICENSE`, diapositive de titre) ; **PyPI** 0.1.0 puis 0.1.1 ;
    interface web : **graphe des 5 alertes les plus fortes** sur la vue d'ensemble, première alerte
    ouverte avec son sous-graphe, composantes séparées d'un graphe disposées côte à côte.
+9. 30–31/10 : **améliorations et mémoire** —
+   - clé d'accès facultative pour l'API (`X-API-Key`) ; entraînement Lightning suivi époque par
+     époque et paramètres enregistrés dans MLflow ; coût de Polars mesuré (12,8 s au lieu de
+     17,3 s, mais 4,2 Go au lieu de 2,6 Go au pic) ;
+   - kit de validation des alertes par un expert (`scripts/expert_review.py`, 50 éléments à
+     juger à l'aveugle, `GUIDE_FR.md` §7) ;
+   - interface web : petits graphes lisibles, effets quasi nuls rédigés en clair, et fermeture
+     d'un jeu de données qui annule ses requêtes en cours (plus d'erreur 404 ni de message
+     d'erreur dans le jeu suivant) ; contrôles après déploiement sur Render (commit 407c717) :
+     **interface 13/13, API 25/25** ;
+   - **mémoire rédigé** (71 pages) : analyse exploratoire de HI-Small (fin de fichier presque
+     entièrement illicite : 655 des 1 797 positifs du test tombent dans ses 8 derniers jours),
+     schéma du modèle EdgeGNN, résultats détaillés des 9 modèles sur les 3 jeux, routes de
+     l'API et configuration des motifs en annexe.
 
 ## 6. Ce qui reste
 
@@ -112,14 +126,21 @@ Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8
 - [x] Auteurs et e-mails (`pyproject.toml`, `CITATION.cff`, `LICENSE`, `paper/main.tex`,
       diapositive de titre) ; ORCID facultatif, plus tard.
 - [x] Dépôt public, ReadTheDocs, modèles sur le Hugging Face Hub (privés), API en ligne (Render).
-- [x] Publication PyPI 0.1.0. [ ] 0.1.1 (étiquette `v0.1.1`, sur votre accord).
+- [x] Publication PyPI 0.1.0 (29/10) et 0.1.1 (30/10).
+- [ ] Votre collègue : créer un compte pypi.org pour être ajoutée au projet (Manage → Collaborators)
+      et configurer son adresse e-mail dans git (son premier commit porte une adresse
+      `example.com`, qui ne le relie pas à son compte GitHub).
 - [ ] Zenodo (DOI de la version), compléter C2 / C8 / C9 de l'article.
 - [ ] Décider si les modèles du Hub deviennent publics (liens de l'article et du README).
 - [ ] Supprimer le fichier de clé Render et révoquer la clé (tableau de bord Render).
 - [ ] Article : source pour la taille du marché AML (ou supprimer la mention), déclarations
-      (conflits d'intérêts, IA), compilation Overleaf, soumission à Software Impacts.
-- [ ] Mémoire : rédaction à partir de `paper/memoire_plan.md`, captures de l'interface web,
-      relecture des diapositives dans PowerPoint, soutenance.
+      (conflits d'intérêts, IA), compilation Overleaf, soumission à Software Impacts ; la
+      référence à la directive UEMOA / BCEAO (article et `paper/memoire_plan.md`) ne s'applique
+      pas à la Mauritanie : la remplacer par le cadre mauritanien.
+- [x] Mémoire rédigé (71 pages, `paper/memoire/`). [ ] À compléter par vous : dédicaces,
+      jury et date de soutenance, déclaration d'usage d'outils d'IA (annexe D), résumé arabe à
+      faire relire, références au cadre mauritanien marquées « À vérifier », format exigé par
+      l'université ; relecture des diapositives dans PowerPoint, répétition de la soutenance.
 - [ ] Validation des alertes et explications avec un expert métier : kit prêt (`scripts/expert_review.py`, grille de 50 éléments dans `results/expert-review/`, procédure dans `GUIDE_FR.md` §7) ; reste à la faire remplir.
 
 ### Pistes techniques possibles (je peux les faire si vous le demandez)
@@ -129,6 +150,8 @@ Procédure pas à pas (sans partager de mot de passe) : `GUIDE_FR.md`, section 8
       propre détecteur).
 - [ ] Hybride sur LI-Small avec GraphSAGE (seul cas sans gain).
 - [ ] Hybride sur 3 graines (aujourd'hui une seule graine, modèles Kaggle seed 0).
+- [ ] Résultats de HI-Small avec et sans les 8 derniers jours du fichier, presque entièrement
+      illicites (mémoire, section 4.7).
 - [ ] Jeux *Medium* d'IBM (nécessitent le GPU Kaggle et plus de mémoire).
 
 ## 7. Environnement et matériel (fiche « Environnement et matériel »)

@@ -52,3 +52,7 @@ tests/e2e/upload.csv
 
 # expert review kit: the answer key must not be published
 results/expert-review/
+
+# thesis (memoire) drafts stay out of this public repository until the defence: an
+# anti-plagiarism check would otherwise match the submitted text against the public copy
+paper/memoire/

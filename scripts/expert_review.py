@@ -184,7 +184,10 @@ def build(args: argparse.Namespace) -> None:
             f"{name} ({f['importance']:+.3f})".replace(".", ",")
             for name, f in zip(names[tx], tops[tx])
         )
-        tool = f"score du modèle {_num(float(by_tx[tx]), 3)}. {summaries[tx]}"
+        tool = (
+            f"score du modèle sur toute la table {_num(float(by_tx[tx]), 3)}. "
+            f"Explication sur le voisinage local : {summaries[tx]}"
+        )
         if attributes:
             tool += f" Attributs les plus influents : {attributes}."
         items.append(
